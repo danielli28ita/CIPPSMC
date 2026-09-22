@@ -1,0 +1,22 @@
+# Spawn-relative mission (default for PID/BPPSMC/PPC fair compare).
+# Latch anchor at first EKF local position:
+#   - XY setpoint = spawn (x,y) → initial ex/ey ≈ 0
+#   - Z setpoint = spawn_z - hover_altitude → initial ez ≈ -5 m (EKF), then climb to 0
+# Pair with SITL_USE_FIXED_SPAWN=1. Multi-vehicle: ref-gen uses /px4_N/fmu via px4_instance.
+reference_generator:
+  ros__parameters:
+    hover_altitude_m: 5.0
+    silent_duration_s: 0.0
+    hold_pose_until_arm: false
+    climb_after_arm_s: 0.0
+    climb_ramp_duration_s: 0.0
+    use_fixed_arm_latch_z: false
+    use_fixed_anchor: false
+    anchor_from_spawn: true
+    auto_offboard_arm: true
+    figure8_start_command_s: 15.0
+    figure8_a: 3.0
+    figure8_omega: 0.2
+    arm_after_command_s: 6.0
+    mission_end_after_arm_s: 80.0
+    use_acceleration_feedforward: true

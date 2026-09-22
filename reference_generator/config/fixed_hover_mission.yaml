@@ -1,0 +1,23 @@
+# Fixed-hover mission overlay: open-loop, state-independent reference.
+# Use via: SITL_MISSION_OVERLAY=.../fixed_hover_mission.yaml
+#   - From startup: constant 5 m hover (z = -5 NED) at fixed anchor (0,0), published immediately.
+#   - At command+15 s: figure-8 (lemniscate) at 5 m.
+#   - NO smoothstep climb ramp, NO hold-current-pose, NO arm-latch-z, NO EKF anchor.
+#     The reference never reads the vehicle position; it is a pure time function.
+reference_generator:
+  ros__parameters:
+    hover_altitude_m: 5.0
+    silent_duration_s: 0.0          # publish setpoint from the very start
+    hold_pose_until_arm: false      # do NOT hold current pose; command -5 m directly
+    climb_after_arm_s: 0.0
+    climb_ramp_duration_s: 0.0      # NO smoothstep ramp (hard step to 5 m)
+    use_fixed_arm_latch_z: false    # do NOT latch the vehicle z at arm
+    use_fixed_anchor: true          # fixed (0,0) anchor — no EKF position read
+    anchor_x_m: 0.0
+    anchor_y_m: 0.0
+    figure8_start_command_s: 15.0   # start figure-8 15 s after command start
+    figure8_a: 3.0
+    figure8_omega: 0.2
+    arm_after_command_s: 6.0
+    mission_end_after_arm_s: 80.0
+    use_acceleration_feedforward: true

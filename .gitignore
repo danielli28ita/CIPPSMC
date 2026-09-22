@@ -1,0 +1,29 @@
+# Build products
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Simulation and experiment data
+*.ulg
+*.bag
+*.bag2
+*.db3
+*.mcap
+*.log
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+*~
+
+# Generated figures and local results
+results/
+plots/
+*.png
+*.pdf

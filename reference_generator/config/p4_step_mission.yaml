@@ -1,0 +1,24 @@
+# P4 timed-arrival mission (RTA settling-time filter bring-up).
+# Spawn-relative climb to 5 m hover; at arm+20 s the hover z setpoint steps up by
+# 2 m (true discontinuity) -> the firmware latches an RTA episode on the step.
+# No figure-8; mission ends (return+land) at arm+45 s.
+reference_generator:
+  ros__parameters:
+    hover_altitude_m: 5.0
+    silent_duration_s: 0.0
+    hold_pose_until_arm: false
+    climb_after_arm_s: 0.0
+    climb_ramp_duration_s: 0.0
+    use_fixed_arm_latch_z: false
+    use_fixed_anchor: false
+    anchor_from_spawn: true
+    auto_offboard_arm: true
+    arm_after_command_s: 6.0
+    figure8_start_command_s: 9999.0
+    figure8_start_after_arm_s: 9999.0
+    force_figure8_timeout_s: 9999.0
+    mission_end_after_arm_s: 45.0
+    use_acceleration_feedforward: true
+    clock_source: local_position
+    altitude_step_after_arm_s: 20.0
+    altitude_step_dz_m: 2.0

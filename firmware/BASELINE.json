@@ -1,0 +1,52 @@
+{
+  "baseline_tag": "v1.15.4",
+  "baseline_commit": "99c40407ffd7ac184e2d7b4b293f36f10fe561ef",
+  "controller_selector": 0,
+  "files": {
+    "ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500": {
+      "baseline_sha256": "4ffa85e8940ebb5dc0338f7043dd6172524c3e0716bf5adc5635f5a425532eaf",
+      "sha256": "958f9d81d776cd223dd7eafcd15b48be0b07de8d6cc1239695c2e35d68915ee9",
+      "bytes": 1570
+    },
+    "msg/CMakeLists.txt": {
+      "baseline_sha256": "dd51e4446794b5e281b45dea977d69a23fd08ad26cd774c687c9a6ab87153cde",
+      "sha256": "f0e7bec5fa1f5ff879f67bdbe8bd0002e4be666fe92d00a92739d9314673b8e3",
+      "bytes": 16711
+    },
+    "src/modules/logger/logged_topics.cpp": {
+      "baseline_sha256": "77a7461346a769763536c27a6aa06b383563238d9a7cb3132e648eb9bb40f867",
+      "sha256": "24a1dfa1929ee2d9ce4888b063fd5894b609c36e6f9723b7f5e37d6cf015ced8",
+      "bytes": 23165
+    },
+    "src/modules/mc_pos_control/MulticopterPositionControl.cpp": {
+      "baseline_sha256": "b5d9698ef170f19015ca37c44f2011ac94a33a45cfab8134fe208980b5899768",
+      "sha256": "9abcd93bfe50eaee0807d0a1a84d6df6f60662e45e353c9a3b5ad26b4546af45",
+      "bytes": 29307
+    },
+    "src/modules/mc_pos_control/MulticopterPositionControl.hpp": {
+      "baseline_sha256": "97a3829efe0b168e70f1e358d24eba2628938d9e2f2a8fd51a089036b355158b",
+      "sha256": "464c0a0ed3a62176363268c5ea1beef3ff1757e5e457f0c0fb5072c0233e0513",
+      "bytes": 11100
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControl.cpp": {
+      "baseline_sha256": "8f9b42c61bfa2e0e3354d6eb50cfee6a88a070da05e4893379bc69c46b1a2434",
+      "sha256": "60bbfd3712bdd8d2b8aad4b1d68c978bd29e75ee78b2fcad339a42dae4dbb8a1",
+      "bytes": 36106
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControl.hpp": {
+      "baseline_sha256": "44b69535bc87c4298a045ccd3af9b88c2fe9a2c85a31fbf3eba27939d5ff4c2e",
+      "sha256": "c576766760cd0a321868d64e07391a1704003e99529a7fbe97920ee130fe9488",
+      "bytes": 13810
+    },
+    "msg/BppsmcDebug.msg": {
+      "baseline_sha256": null,
+      "sha256": "fa37022eb6d39b528d773581100173f573cc722e19d72aa0c9e95089261a972b",
+      "bytes": 720
+    },
+    "src/modules/mc_pos_control/PositionControl/etimr_gains.h": {
+      "baseline_sha256": null,
+      "sha256": "2c407158618abeae8b5e70cbd3d56b591bf2c55d8c65514a593f7176d55e4a91",
+      "bytes": 2070
+    }
+  }
+}

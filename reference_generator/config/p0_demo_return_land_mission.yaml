@@ -1,0 +1,24 @@
+# P0 demo mission (run_bppsmc_only.sh): 5 m climb -> figure-8 -> return-to-origin -> land.
+# Timed for a ~60 s window: return-to-origin begins ~45 s after arm (~44 s of flight),
+# descent (land) begins ~50 s, touchdown well before the 60 s stack stop.
+# Based on spawn_relative_mission.yaml (matched 5 m initial vertical error), with the
+# return/land phase timing made explicit.
+reference_generator:
+  ros__parameters:
+    hover_altitude_m: 5.0
+    silent_duration_s: 0.0
+    hold_pose_until_arm: false
+    climb_after_arm_s: 0.0
+    climb_ramp_duration_s: 0.0
+    use_fixed_arm_latch_z: false
+    use_fixed_anchor: false
+    anchor_from_spawn: true
+    auto_offboard_arm: true
+    figure8_start_command_s: 15.0
+    figure8_a: 3.0
+    figure8_omega: 0.2
+    arm_after_command_s: 6.0
+    mission_end_after_arm_s: 45.0        # figure-8 -> ReturnOrigin at ~44 s of flight
+    return_origin_timeout_s: 5.0         # ReturnOrigin -> Land (descent) at ~50 s
+    return_origin_arrival_radius_m: 1.5
+    use_acceleration_feedforward: true
