@@ -10,5 +10,5 @@
 
 # 2026-10-27
 
-- Publish the package under the paper title, with the short name BIPPSMC.
+- Publish the package under the paper title, with the short name CIPPSMC.
 - Add Flight B (`data/log_2.ulg`) and redraw the README figures from Flight A and Flight B only.

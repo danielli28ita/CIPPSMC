@@ -2,14 +2,14 @@
  * Multicopter position-controller selection
  *
  * Select the native PX4 cascaded position-P / velocity-PID controller,
- * or the BIPPSMC acceleration controller.
+ * or the CIPPSMC acceleration controller.
  * Applied only while disarmed. Attitude and rate controllers stay native PX4.
  *
  * @value 0 Native PX4 PID
- * @value 1 BIPPSMC
+ * @value 1 CIPPSMC
  * @min 0
  * @max 1
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_INT32(MPC_CTRL_METHOD, 0);
 
@@ -22,7 +22,7 @@ PARAM_DEFINE_INT32(MPC_CTRL_METHOD, 0);
  * @min 0.05
  * @max 5
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_AMAX_XY, 0.72f);
 
@@ -34,7 +34,7 @@ PARAM_DEFINE_FLOAT(BPP_AMAX_XY, 0.72f);
  * @min 0.05
  * @max 5
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_AMAX_Z, 0.90f);
 
@@ -47,7 +47,7 @@ PARAM_DEFINE_FLOAT(BPP_AMAX_Z, 0.90f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_BAND_XY, 0.75f);
 
@@ -59,7 +59,7 @@ PARAM_DEFINE_FLOAT(BPP_BAND_XY, 0.75f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_BAND_Z, 0.75f);
 
@@ -70,7 +70,7 @@ PARAM_DEFINE_FLOAT(BPP_BAND_Z, 0.75f);
  * @min 0.01
  * @max 1
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_DELTA, 0.10f);
 
@@ -82,7 +82,7 @@ PARAM_DEFINE_FLOAT(BPP_DELTA, 0.10f);
  * @min 0.05
  * @max 0.99
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_TRIG_XY, 0.76f);
 
@@ -93,7 +93,7 @@ PARAM_DEFINE_FLOAT(BPP_TRIG_XY, 0.76f);
  * @min 0.05
  * @max 0.99
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_TRIG_Z, 0.95f);
 
@@ -104,7 +104,7 @@ PARAM_DEFINE_FLOAT(BPP_TRIG_Z, 0.95f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_KS_XY, 1.40f);
 
@@ -115,7 +115,7 @@ PARAM_DEFINE_FLOAT(BPP_KS_XY, 1.40f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_KS_Z, 1.75f);
 
@@ -126,7 +126,7 @@ PARAM_DEFINE_FLOAT(BPP_KS_Z, 1.75f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K0_XY, 1.20f);
 
@@ -137,7 +137,7 @@ PARAM_DEFINE_FLOAT(BPP_K0_XY, 1.20f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K0_Z, 1.80f);
 
@@ -149,7 +149,7 @@ PARAM_DEFINE_FLOAT(BPP_K0_Z, 1.80f);
  * @min 0
  * @max 5
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K1_XY, 0.20f);
 
@@ -160,7 +160,7 @@ PARAM_DEFINE_FLOAT(BPP_K1_XY, 0.20f);
  * @min 0
  * @max 5
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K1_Z, 0.35f);
 
@@ -171,7 +171,7 @@ PARAM_DEFINE_FLOAT(BPP_K1_Z, 0.35f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_PHI_XY, 1.50f);
 
@@ -182,7 +182,7 @@ PARAM_DEFINE_FLOAT(BPP_PHI_XY, 1.50f);
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_PHI_Z, 1.20f);
 
@@ -194,7 +194,7 @@ PARAM_DEFINE_FLOAT(BPP_PHI_Z, 1.20f);
  * @min 0.1
  * @max 20
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_T_PRE, 2.f);
 
@@ -205,7 +205,7 @@ PARAM_DEFINE_FLOAT(BPP_T_PRE, 2.f);
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_EPS_PRE, 0.1f);
 
@@ -217,7 +217,7 @@ PARAM_DEFINE_FLOAT(BPP_EPS_PRE, 0.1f);
  * @min 0.1
  * @max 20
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_T_SLIDE, 2.f);
 
@@ -228,7 +228,7 @@ PARAM_DEFINE_FLOAT(BPP_T_SLIDE, 2.f);
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_EPS_SLIDE, 0.1f);
 
@@ -240,7 +240,7 @@ PARAM_DEFINE_FLOAT(BPP_EPS_SLIDE, 0.1f);
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_E0_MIN, 0.05f);
 
@@ -252,7 +252,7 @@ PARAM_DEFINE_FLOAT(BPP_E0_MIN, 0.05f);
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_ACC_FLOOR, 0.05f);
 
@@ -264,7 +264,7 @@ PARAM_DEFINE_FLOAT(BPP_ACC_FLOOR, 0.05f);
  * @min 0.05
  * @max 0.99
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_TRIG_RAMP, 0.30f);
 
@@ -278,7 +278,7 @@ PARAM_DEFINE_FLOAT(BPP_TRIG_RAMP, 0.30f);
  * @min 0.1
  * @max 15
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_ACC_XY, 6.f);
 
@@ -291,6 +291,6 @@ PARAM_DEFINE_FLOAT(BPP_ACC_XY, 6.f);
  * @min 0.1
  * @max 15
  * @decimal 2
- * @group BIPPSMC
+ * @group CIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_ACC_Z, 10.f);

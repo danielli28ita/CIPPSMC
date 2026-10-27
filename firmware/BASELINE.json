@@ -279,7 +279,7 @@
       "baseline_sha256": null
     },
     "src/modules/mc_pos_control/bppsmc_params.c": {
-      "sha256": "a18fbb4538975707d7e9262b9d09ec065f8f14f0cc634a6ceda93702b5b5be9e",
+      "sha256": "1919ac3a61452daf77b84e7881cc6fedc081df3050f71cbe75370cd075391862",
       "baseline_sha256": null
     },
     "ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500": {

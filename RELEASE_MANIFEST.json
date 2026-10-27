@@ -7,7 +7,7 @@
       "bytes": 39
     },
     "CHANGELOG.md": {
-      "sha256": "310941e5514c30eacf63c6063c5d9cde4a16070bca6d56a25cfb7bafc7d80a39",
+      "sha256": "3ec0251aebad094d5fde4001ba1f68d5e6d63baa5c8d974c5a7d98c4a196d680",
       "bytes": 1141
     },
     "LICENSE": {
@@ -19,7 +19,7 @@
       "bytes": 1527
     },
     "README.md": {
-      "sha256": "444771fbe6049d78b3cf41f5327da30b96b155a842a0199519f10eabbf23d07f",
+      "sha256": "1ff58b758025692fc2b73935be7ffff8fa1dc1fb31e4b75b5b26bdaf8bef4d88",
       "bytes": 9021
     },
     "THIRD_PARTY_NOTICES.md": {
@@ -127,7 +127,7 @@
       "bytes": 1372
     },
     "firmware/BASELINE.json": {
-      "sha256": "79d030104e907235b217b9b3288ffbd49bd3559b6ce2e54b1234d6904238d5b7",
+      "sha256": "3b402f4eae5c4490364df93ca85af525ba80ea3a23240b126235800d223c2777",
       "bytes": 15104
     },
     "firmware/against-v1.15.4.patch": {
@@ -235,7 +235,7 @@
       "bytes": 2070
     },
     "firmware/overlay/src/modules/mc_pos_control/bppsmc_params.c": {
-      "sha256": "a18fbb4538975707d7e9262b9d09ec065f8f14f0cc634a6ceda93702b5b5be9e",
+      "sha256": "1919ac3a61452daf77b84e7881cc6fedc081df3050f71cbe75370cd075391862",
       "bytes": 5489
     },
     "firmware/overlay/src/modules/simulation/gz_bridge/GZBridge.cpp": {

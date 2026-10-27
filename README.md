@@ -4,7 +4,7 @@
 
 *Indoor flight area. The two flight logs were recorded with the quadrotor in this room.*
 
-Short name: **BIPPSMC**.
+Short name: **CIPPSMC**.
 
 This repository holds the PX4 v1.15.4 position-controller sources, two real-flight logs, and the figures drawn from those logs. The curves use the same panel layout as the paper: per-axis position error, commanded acceleration, and the horizontal path. Simulator runs are a separate code check and are not drawn on these figures.
 
