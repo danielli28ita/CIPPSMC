@@ -1,8 +1,0 @@
-# Fair-compare mission overlay (PID vs BPPSMC / PPC).
-# Use via: SITL_MISSION_CONFIG=.../fair_compare_mission.yaml
-# Merges on top of default_mission.yaml when both passed to launch.
-reference_generator:
-  ros__parameters:
-    climb_ramp_duration_s: 4.0
-    use_fixed_arm_latch_z: true
-    fixed_arm_latch_z_ned: -1.5
