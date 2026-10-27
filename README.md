@@ -1,18 +1,54 @@
 # Cycloid-Inspired Prescribed Performance Sliding-Mode Position Control of Quadrotors With Bounded Time-Varying Gains
 
-本包冻结论文中的 PX4 v1.15.4 位置控制器和飞控内部伯努利双纽线任务，提供源码恢复、Pixhawk 6C 固件构建、SITL 运行及实飞日志离线复算。
+简称 **BIPPSMC**。本仓库是该论文位置控制器的实飞记录：PX4 v1.15.4 源码修改、唯一实飞日志，以及按论文误差图和加速度图的版式重绘的曲线。
 
-**唯一实飞样例是 `log_19_2026-10-19-10-01-54.ulg`；全部样例参数、图表和期望指标均来自它。** 未收录其他架次的数据、参数或历史统计表。原始日志按字节保留，SHA256 为：
+**唯一实飞样例是 `log_19_2026-10-19-10-01-54.ulg`。** 下面三张图、样例参数和 `data/REPORT.md` 都只来自这一条日志。原始日志按字节保留，SHA256 为：
 
 ```text
 34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e
 ```
 
+## 图
+
+时间零点是这条日志的起点，不是论文软件在环实验的解锁时刻。位置误差是估计位置减去参考。垂向面板里的灰色带是该轴记录的走廊 \(\rho_c\pm b\)；平面面板不画走廊，避免半宽盖住误差曲线。短竖线是走廊中心重置。加速度图中的点线是该轴指令限幅。水平轨迹只取八字段。
+
+![Per-axis position error](figs/error_time.png)
+
+*分轴位置误差。\(e_x\)、\(e_y\)、\(e_z\) 分别是北、东、下。*
+
+![Commanded acceleration](figs/acceleration_time.png)
+
+*位置环加速度指令 \(a_{sp,x}\)、\(a_{sp,y}\)、\(a_{sp,z}\)。*
+
+![Horizontal trajectory](figs/trajectory_xy.png)
+
+*八字段水平轨迹。虚线是参考，实线是估计位置。*
+
+重新出图：
+
+```bash
+python scripts/make_paper_figures.py --log data/log_19_2026-10-19-10-01-54.ulg --out figs
+```
+
+## 源码、数据和文档
+
+| 内容 | 位置 |
+|---|---|
+| 固件修改与基线 | [firmware/](firmware/) |
+| 实飞日志 | [data/log_19_2026-10-19-10-01-54.ulg](data/log_19_2026-10-19-10-01-54.ulg) |
+| 样例参数 | [params/flight_profile.params](params/flight_profile.params) |
+| 指标与口径 | [data/REPORT.md](data/REPORT.md) |
+| 论文版式图 | [figs/](figs/) |
+| 离线复算 | `scripts/analyze_sample.py --verify` |
+| 实机构建与操作 | [docs/REAL_AIRCRAFT.md](docs/REAL_AIRCRAFT.md) |
+
+日志里的参数名 `BPP_*` 和话题 `bppsmc_debug` 保持记录时的名字，这样离线复算能对上这条 ULog。
+
 ## 先选择要复现的内容
 
 | 目标 | 入口 | 所需条件 |
 |---|---|---|
-| 查看样例和结果 | [样例报告](data/REPORT.md)、[跟踪图](data/analysis/tracking.png) | 解压即可 |
+| 查看样例和结果 | [README 图](figs/error_time.png)、[样例报告](data/REPORT.md) | 解压即可 |
 | 重新计算实飞指标 | `scripts/analyze_sample.py --verify` | Python 3.10 与锁定依赖，不需要飞控、ROS 或 Gazebo |
 | 轨迹与任务离线测试 | `scripts/test_offline.py` | 上述 Python 环境及 g++ |
 | 从源码构建实机固件 | `scripts/reproduce.py build real` | Ubuntu 22.04、ARM 编译器、固定上游源码 |
