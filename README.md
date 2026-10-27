@@ -19,7 +19,7 @@ Both logs record the onboard figure-eight task with `MPC_CTRL_METHOD=1`. The byt
 
 ## Figures
 
-Time is seconds from arming. Position error is the estimator position minus the reference. The vertical panel shows Flight A's logged corridor \(\rho_c\pm b\); the planar panels omit it so the half-width does not hide the traces. Short ticks, if present, are corridor-center resets. Dotted lines on the acceleration figure are the logged command limits. The horizontal path is the figure-eight segment of each flight, centered on that flight's own reference.
+Time is seconds from liftoff. Each trace runs through touchdown, including takeoff, hover, the figure-eight, the return, and the descent. Position error is the estimator position minus the reference. The vertical panel shows Flight A's logged corridor \(\rho_c\pm b\); the planar panels omit it so the half-width does not hide the traces. Short ticks, if present, are corridor-center resets. Dotted lines on the acceleration figure are the logged command limits. The horizontal path uses the same liftoff-to-touchdown interval. Each flight is shifted so its reference at liftoff is the origin.
 
 ![Per-axis position error](figs/error_time.png)
 
@@ -31,16 +31,7 @@ Time is seconds from arming. Position error is the estimator position minus the 
 
 ![Horizontal trajectory](figs/trajectory_xy.png)
 
-*Figure-eight path. The dashed curve is the reference. Solid is Flight A and dash-dot is Flight B.*
-
-Redraw the figures:
-
-```bash
-python scripts/make_paper_figures.py \
-  --flight-a data/log_19_2026-10-19-10-01-54.ulg \
-  --flight-b data/log_2.ulg \
-  --out figs
-```
+*Horizontal path from liftoff to touchdown. The dashed curve is the reference. Solid is Flight A and dash-dot is Flight B.*
 
 ## Source, data, and documents
 
