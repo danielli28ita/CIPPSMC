@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SAMPLE = ROOT/'data/log_19_2026-10-19-10-01-54.ulg'
+SAMPLE = ROOT/'data/log_1.ulg'
 
 
 def metrics(summary):
@@ -26,7 +26,7 @@ def metrics(summary):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--out', type=Path, default=ROOT/'reports/log_19')
+    parser.add_argument('--out', type=Path, default=ROOT/'reports/log_1')
     parser.add_argument('--verify', action='store_true')
     args = parser.parse_args()
     provenance = json.loads((ROOT/'data/PROVENANCE.json').read_text())

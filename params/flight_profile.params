@@ -1,4 +1,4 @@
-# Extracted solely from log_19; not a universal vehicle setup.
+# Extracted solely from log_1.ulg; not a universal vehicle setup.
 # Full calibration/system backup is reference only; see docs/PARAMETERS.md.
 1	1	BPP_ACC_FLOOR	0.05000000074505806	9
 1	1	BPP_ACC_XY	6	9

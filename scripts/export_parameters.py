@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Export parameters only from the single bundled log_19."""
+"""Export parameters only from the bundled log_1.ulg."""
 import hashlib
 import json
 from pathlib import Path
 from pyulog import ULog
 
 ROOT = Path(__file__).resolve().parents[1]
-SAMPLE = ROOT/'data/log_19_2026-10-19-10-01-54.ulg'
+SAMPLE = ROOT/'data/log_1.ulg'
 EXPECTED = '34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e'
 
 
@@ -21,7 +21,7 @@ def main():
     profile = {k: v for k, v in params.items() if k.startswith(('BPP_', 'F8_')) or k in ('MPC_CTRL_METHOD', 'MPC_THR_HOVER')}
     (destination/'flight_profile.json').write_text(json.dumps(profile, indent=2, sort_keys=True)+'\n')
     for name, values in [('all_parameters_REFERENCE_ONLY.params', params), ('flight_profile.params', profile)]:
-        lines = ['# Extracted solely from log_19; not a universal vehicle setup.\n',
+        lines = ['# Extracted solely from log_1.ulg; not a universal vehicle setup.\n',
                  '# Full calibration/system backup is reference only; see docs/PARAMETERS.md.\n']
         for k, v in sorted(values.items()):
             kind = 6 if isinstance(v, int) else 9
@@ -34,7 +34,7 @@ def main():
               'firmware_metadata': log.msg_info_dict,
               'exact_rebuilt_binary_identity_with_sample': False}
     (ROOT/'data/PROVENANCE.json').write_text(json.dumps(record, indent=2, ensure_ascii=False)+'\n')
-    print('PASS: exported '+str(len(params))+' initial parameters and '+str(len(profile))+' task/controller profile parameters from log_19 only')
+    print('PASS: exported '+str(len(params))+' initial parameters and '+str(len(profile))+' task/controller profile parameters from log_1.ulg only')
 
 
 if __name__ == '__main__':

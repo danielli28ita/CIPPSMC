@@ -1,6 +1,6 @@
-# Flight A: log_19
+# Flight A: log_1
 
-Source file: `log_19_2026-10-19-10-01-54.ulg`. The bytes are unchanged. The SHA256 is in [PROVENANCE.json](PROVENANCE.json). The file name and the log's internal time label are not a certified wall clock. Times below are seconds from the ULog start.
+Source file: `log_1.ulg`. The bytes are unchanged. The SHA256 is in [PROVENANCE.json](PROVENANCE.json). The file name and the log's internal time label are not a certified wall clock. Times below are seconds from the ULog start.
 
 The log lasts about 83.565 s, with `MPC_CTRL_METHOD=1`, `KS_XY=1.70`, and `KS_Z=2.00`. The path is 0.8 m high, with scale a = 1.6 m, 25 s per lap, and two laps. All 1153 initial parameters were exported. No parameter changes during the flight.
 

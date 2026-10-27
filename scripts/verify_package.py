@@ -20,7 +20,7 @@ for name, info in manifest['files'].items():
         raise SystemExit('Checksum mismatch: '+name)
 samples = {path.name: path for path in (ROOT/'data').rglob('*.ulg')}
 expected = {
-    'log_19_2026-10-19-10-01-54.ulg': '34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e',
+    'log_1.ulg': '34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e',
     'log_2.ulg': 'd96751a3576ee280d0c288d8a53f4f393f5006c9c6b5c32192b82d8dcbfde632',
 }
 found = {}

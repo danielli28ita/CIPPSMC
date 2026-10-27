@@ -1,6 +1,6 @@
 # Aircraft, external pose, and task operation
 
-The flight evidence in this package is Flight A (`log_19`) and Flight B (`data/log_2.ulg`). Flight A records a complete two-lap task, landing, and a normal disarm. Building this package did not connect to a flight controller. The rebuilt firmware is not a new flight acceptance, and the historical flight binary is not certified byte for byte.
+The flight evidence in this package is Flight A (`data/log_1.ulg`) and Flight B (`data/log_2.ulg`). Flight A records a complete two-lap task, landing, and a normal disarm. Building this package did not connect to a flight controller. The rebuilt firmware is not a new flight acceptance, and the historical flight binary is not certified byte for byte.
 
 ## Known configuration and physical items still missing
 

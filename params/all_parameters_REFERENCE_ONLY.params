@@ -1,4 +1,4 @@
-# Extracted solely from log_19; not a universal vehicle setup.
+# Extracted solely from log_1.ulg; not a universal vehicle setup.
 # Full calibration/system backup is reference only; see docs/PARAMETERS.md.
 1	1	ASPD_SCALE_1	1	9
 1	1	BAT1_A_PER_V	36.367515563964844	9

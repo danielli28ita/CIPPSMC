@@ -12,7 +12,7 @@ This repository holds the PX4 v1.15.4 position-controller sources, two real-flig
 
 | Flight | Log | SHA256 |
 |---|---|---|
-| A | [data/log_19_2026-10-19-10-01-54.ulg](data/log_19_2026-10-19-10-01-54.ulg) | `34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e` |
+| A | [data/log_1.ulg](data/log_1.ulg) | `34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e` |
 | B | [data/log_2.ulg](data/log_2.ulg) | `d96751a3576ee280d0c288d8a53f4f393f5006c9c6b5c32192b82d8dcbfde632` |
 
 Both logs record the onboard figure-eight task with `MPC_CTRL_METHOD=1`. The bytes are unchanged. Numeric metrics already computed for Flight A are in [data/REPORT.md](data/REPORT.md).
@@ -38,7 +38,7 @@ Time is seconds from liftoff. Each trace runs through touchdown, including takeo
 | Item | Path |
 |---|---|
 | Firmware overlay and baseline | [firmware/](firmware/) |
-| Flight A log | [data/log_19_2026-10-19-10-01-54.ulg](data/log_19_2026-10-19-10-01-54.ulg) |
+| Flight A log | [data/log_1.ulg](data/log_1.ulg) |
 | Flight B log | [data/log_2.ulg](data/log_2.ulg) |
 | Flight A parameters | [params/flight_profile.params](params/flight_profile.params) |
 | Flight A metrics | [data/REPORT.md](data/REPORT.md) |
@@ -76,7 +76,7 @@ python scripts/test_offline.py
 python scripts/analyze_sample.py --verify
 ```
 
-Recomputed metrics are written to `reports/log_19/` and do not overwrite `data/`. The tolerance is relative 1e-6 and absolute 1e-8; see [data/expected_metrics.json](data/expected_metrics.json). Images are not required to match pixel for pixel.
+Recomputed metrics are written to `reports/log_1/` and do not overwrite `data/`. The tolerance is relative 1e-6 and absolute 1e-8; see [data/expected_metrics.json](data/expected_metrics.json). Images are not required to match pixel for pixel.
 
 On Flight A the figure-eight task finishes two laps, lands, and disarms. Its three-dimensional position RMSE is about **0.1026 m** and the horizontal RMSE is about **0.0959 m**. These are estimator-to-reference errors for that one log, not an independent position truth and not a multi-flight statistical claim.
 

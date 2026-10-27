@@ -41,7 +41,7 @@ def main():
     files.sort()
     samples = [p for p in files if p.suffix == '.ulg']
     expected = {
-        'log_19_2026-10-19-10-01-54.ulg',
+        'log_1.ulg',
         'log_2.ulg',
     }
     if {p.name for p in samples} != expected:

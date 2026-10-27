@@ -11,6 +11,6 @@
   "new_hardware_flash_or_flight_performed": false,
   "fresh_os_install_tested": false,
   "exact_sample_firmware_binary_identity_verified": false,
-  "only_bundled_ulog": "log_19_2026-10-19-10-01-54.ulg",
+  "bundled_ulogs": ["log_1.ulg", "log_2.ulg"],
   "notes": "Final independent extraction results are recorded separately."
 }

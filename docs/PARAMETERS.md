@@ -1,6 +1,6 @@
 # Parameters and the Flight A configuration
 
-Every sample parameter in this table was taken from Flight A (`log_19`). No other flight and no unflown candidate value is mixed in. The JSON and the 17-significant-digit QGroundControl text keep the decoded float32 values. The table below is rounded for reading.
+Every sample parameter in this table was taken from Flight A (`log_1.ulg`). No other flight and no unflown candidate value is mixed in. The JSON and the 17-significant-digit QGroundControl text keep the decoded float32 values. The table below is rounded for reading.
 
 | Parameter | Sample | Meaning |
 |---|---:|---|
