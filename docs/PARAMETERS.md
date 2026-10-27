@@ -1,55 +1,55 @@
-# 参数文件与 log_19 配置
+# Parameters and the Flight A configuration
 
-本包全部样例参数均从唯一 log_19 提取，没有混用其他架次或未实飞候选值。JSON 与 17 位有效数字 QGC 文本保留解码后的 float32 精确值；下表仅为便于阅读的四舍五入显示。
+Every sample parameter in this table was taken from Flight A (`log_19`). No other flight and no unflown candidate value is mixed in. The JSON and the 17-significant-digit QGroundControl text keep the decoded float32 values. The table below is rounded for reading.
 
-| 参数 | 样例值 | 含义 |
+| Parameter | Sample | Meaning |
 |---|---:|---|
-| `BPP_ACC_FLOOR` | 0.05 | 事件所需最小校正加速度 |
-| `BPP_ACC_XY` | 6 | 每水平轴加速度输出限幅，m/s² |
-| `BPP_ACC_Z` | 10 | 垂直加速度输出限幅，m/s² |
-| `BPP_AMAX_XY` | 0.72 | 水平性能中心加速度尺度，m/s²；不是输出上限 |
-| `BPP_AMAX_Z` | 0.9 | 垂直性能中心加速度尺度，m/s² |
-| `BPP_BAND_XY` | 0.75 | 水平漏斗最小半宽，m |
-| `BPP_BAND_Z` | 0.75 | 垂直漏斗最小半宽，m |
-| `BPP_DELTA` | 0.1 | 锚点误差对应的漏斗半宽比例 |
-| `BPP_E0_MIN` | 0.05 | 锚点误差幅值下限，m |
-| `BPP_EPS_PRE` | 0.1 | 趋近时变增益容差 |
-| `BPP_EPS_SLIDE` | 0.1 | 滑动时变增益容差 |
-| `BPP_K0_XY` | 1.3 | 水平线性趋近基础增益 |
-| `BPP_K0_Z` | 1.9 | 垂直线性趋近基础增益 |
-| `BPP_K1_XY` | 0.25 | 水平 tanh 切换项增益 |
-| `BPP_K1_Z` | 0.4 | 垂直 tanh 切换项增益 |
-| `BPP_KS_XY` | 1.7 | 水平滑模面基础增益 |
-| `BPP_KS_Z` | 2 | 垂直滑模面基础增益 |
-| `BPP_PHI_XY` | 1.5 | 水平 tanh 平滑边界层尺度 |
-| `BPP_PHI_Z` | 1.2 | 垂直 tanh 平滑边界层尺度 |
-| `BPP_TRIG_RAMP` | 0.3 | 起飞首次垂直事件阈值比例 |
-| `BPP_TRIG_XY` | 0.76 | 水平事件阈值/半宽比例 |
-| `BPP_TRIG_Z` | 0.95 | 垂直事件阈值/半宽比例 |
-| `BPP_T_PRE` | 2 | 趋近时间参数，s |
-| `BPP_T_SLIDE` | 2 | 滑动时间参数，s |
-| `F8_ENABLE` | 1 | 机载任务启用；修改后重启 |
-| `F8_ERR_MAX` | 3 | 三维误差中止阈值，m |
-| `F8_HEIGHT` | 0.8 | 相对地面准备点高度，m |
-| `F8_HOV_TIME` | 5 | 任务前后最少悬停时间，s |
-| `F8_LAPS` | 2 | 圈数 |
-| `F8_LND_DEPTH` | 0.3 | 降落参考越过起飞平面的深度，m |
-| `F8_LND_TIME` | 18 | 下降参考加速时长上限，s；受最低终端速度逻辑影响 |
-| `F8_PERIOD` | 25 | 每圈时长，s |
-| `F8_RADIUS` | 1.6 | 伯努利双纽线尺度 a，m |
-| `F8_TKO_TIME` | 12 | 平滑起飞参考时长，s |
-| `MPC_CTRL_METHOD` | 1 | 0 原生 PID；1 本文位置控制器 |
-| `MPC_THR_HOVER` | 0.21 | 实机归一化悬停推力映射 |
+| `BPP_ACC_FLOOR` | 0.05 | Minimum corrective acceleration required for an event |
+| `BPP_ACC_XY` | 6 | Per-horizontal-axis acceleration command limit, m/s² |
+| `BPP_ACC_Z` | 10 | Vertical acceleration command limit, m/s² |
+| `BPP_AMAX_XY` | 0.72 | Horizontal performance-center acceleration scale, m/s²; not the output limit |
+| `BPP_AMAX_Z` | 0.9 | Vertical performance-center acceleration scale, m/s² |
+| `BPP_BAND_XY` | 0.75 | Minimum horizontal corridor half-width, m |
+| `BPP_BAND_Z` | 0.75 | Minimum vertical corridor half-width, m |
+| `BPP_DELTA` | 0.1 | Corridor half-width as a fraction of the anchor error |
+| `BPP_E0_MIN` | 0.05 | Floor on the anchor-error magnitude, m |
+| `BPP_EPS_PRE` | 0.1 | Reaching-phase tolerance of the time-varying gain |
+| `BPP_EPS_SLIDE` | 0.1 | Sliding-phase tolerance of the time-varying gain |
+| `BPP_K0_XY` | 1.3 | Horizontal linear reaching gain |
+| `BPP_K0_Z` | 1.9 | Vertical linear reaching gain |
+| `BPP_K1_XY` | 0.25 | Horizontal tanh switching gain |
+| `BPP_K1_Z` | 0.4 | Vertical tanh switching gain |
+| `BPP_KS_XY` | 1.7 | Horizontal sliding-surface gain |
+| `BPP_KS_Z` | 2 | Vertical sliding-surface gain |
+| `BPP_PHI_XY` | 1.5 | Horizontal tanh boundary-layer scale |
+| `BPP_PHI_Z` | 1.2 | Vertical tanh boundary-layer scale |
+| `BPP_TRIG_RAMP` | 0.3 | Trigger fraction for the first vertical event during takeoff |
+| `BPP_TRIG_XY` | 0.76 | Horizontal trigger as a fraction of the half-width |
+| `BPP_TRIG_Z` | 0.95 | Vertical trigger as a fraction of the half-width |
+| `BPP_T_PRE` | 2 | Reaching-time parameter, s |
+| `BPP_T_SLIDE` | 2 | Sliding-time parameter, s |
+| `F8_ENABLE` | 1 | Enable the onboard task; a change takes effect after reboot |
+| `F8_ERR_MAX` | 3 | Three-dimensional error at which the task aborts, m |
+| `F8_HEIGHT` | 0.8 | Height relative to the ground-preparation point, m |
+| `F8_HOV_TIME` | 5 | Minimum hover before and after the task, s |
+| `F8_LAPS` | 2 | Number of laps |
+| `F8_LND_DEPTH` | 0.3 | How far the landing reference crosses the takeoff plane, m |
+| `F8_LND_TIME` | 18 | Upper bound on the descent-reference ramp, s; the minimum terminal-speed logic also applies |
+| `F8_PERIOD` | 25 | Duration of one lap, s |
+| `F8_RADIUS` | 1.6 | Bernoulli-lemniscate scale a, m |
+| `F8_TKO_TIME` | 12 | Smooth takeoff-reference duration, s |
+| `MPC_CTRL_METHOD` | 1 | 0 native PID; 1 this position controller |
+| `MPC_THR_HOVER` | 0.21 | Normalized hover-thrust mapping on the aircraft |
 
-## 生效与配置边界
+## When the values take effect
 
-- `MPC_CTRL_METHOD`、`BPP_*` 在未解锁时应用；F8 任务参数在地面准备时读取，飞行中修改不改变本次任务。`F8_ENABLE` 修改后重启。
-- 固件默认值仍来自冻结源码，通常是 PID、任务关闭和原始 BPP 初值；上表是样例运行参数，两者不能混为一谈。
-- `flight_profile.params` 仅 36 项；完整 1153 项见 `all_parameters.json` 和 `all_parameters_REFERENCE_ONLY.params`。后者包含校准、板型、电源和模式设置，仅作来源记录。
-- 原始日志没有飞行中参数修改，所以不存在一架次内需要拼接的多组 BPP 配置。
-- 坐标为本地 NED，位置误差为实际减参考；Z 正误差表示低于参考。
-- 仿真沿用相同 BPP/F8。X500 的悬停映射只写在仿真启动配置中，记录见 `validation/sitl_result.json`，不写入实机参数文件，也不修改冻结控制器源码。
+- `MPC_CTRL_METHOD` and `BPP_*` are applied while disarmed. Figure-eight task parameters are read during ground preparation; changing them in flight does not change the current task. `F8_ENABLE` takes effect after reboot.
+- Firmware defaults still come from the frozen sources, usually PID, task disabled, and the original `BPP` initial values. The table is the sample that flew. The two sets are not interchangeable.
+- `flight_profile.params` has 36 entries. All 1153 entries are in `all_parameters.json` and `all_parameters_REFERENCE_ONLY.params`. The latter includes calibration, board, power, and mode settings and is a source record only.
+- The original log has no in-flight parameter changes, so one flight does not contain several `BPP` configurations to splice.
+- Coordinates are local NED. Position error is measured minus reference. A positive z error is below the reference.
+- A simulator run can reuse the same `BPP` and `F8` values. The X500 hover mapping is written only in the simulator start configuration and is recorded in `validation/sitl_result.json`. It is not written into the aircraft parameter file and it does not modify the frozen controller sources.
 
-## 其他配置的来源
+## Other recorded configuration
 
-外部位置/高度/航向融合配置为 EKF2_EV_CTRL=11、EKF2_GPS_CTRL=0、EKF2_HGT_REF=3，外部速度未融合。SYS_AUTOSTART=4050、SYS_HITL=0。机体的原生内环、校准、接收机等其他数值完整保留在 all_parameters.json，未作为通用可移植配置自动应用。
+External position, height, and yaw fusion are `EKF2_EV_CTRL=11`, `EKF2_GPS_CTRL=0`, and `EKF2_HGT_REF=3`. External velocity is not fused. `SYS_AUTOSTART=4050` and `SYS_HITL=0`. The native inner-loop, calibration, and receiver values remain in `all_parameters.json`. They are not applied automatically as a portable configuration.

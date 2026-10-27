@@ -1,289 +1,296 @@
 /**
- * 多旋翼位置控制器类型
+ * Multicopter position-controller selection
  *
- * 选择 PX4 原生串级位置 P / 速度 PID 控制器，或 ET-BPPSMC 加速度控制器。
- * 仅在解除武装后应用。姿态和角速度控制器仍为 PX4 原生控制器。
+ * Select the native PX4 cascaded position-P / velocity-PID controller,
+ * or the BIPPSMC acceleration controller.
+ * Applied only while disarmed. Attitude and rate controllers stay native PX4.
  *
- * @value 0 PX4 原生 PID
- * @value 1 ET-BPPSMC
+ * @value 0 Native PX4 PID
+ * @value 1 BIPPSMC
  * @min 0
  * @max 1
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_INT32(MPC_CTRL_METHOD, 0);
 
 /**
- * 水平预设性能函数加速度参数
+ * Horizontal prescribed-performance acceleration scale
  *
- * 用于设置最速性能函数形状，不是控制器输出限幅。仅在解除武装后应用，X/Y 轴共用此值。
+ * Sets the shape of the performance function. It is not the output limit.
+ * Applied only while disarmed. Shared by the x and y axes.
  * @unit m/s^2
  * @min 0.05
  * @max 5
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_AMAX_XY, 0.72f);
 
 /**
- * 垂直预设性能函数加速度参数
+ * Vertical prescribed-performance acceleration scale
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @unit m/s^2
  * @min 0.05
  * @max 5
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_AMAX_Z, 0.90f);
 
 /**
- * 水平误差漏斗最小半宽
+ * Minimum horizontal corridor half-width
  *
- * 实际半宽为 max(BPP_DELTA * 初始误差, 此参数值)。仅在解除武装后应用，X/Y 轴共用此值。
+ * The half-width used in flight is max(BPP_DELTA * initial error, this value).
+ * Applied only while disarmed. Shared by the x and y axes.
  * @unit m
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_BAND_XY, 0.75f);
 
 /**
- * 垂直误差漏斗最小半宽
+ * Minimum vertical corridor half-width
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @unit m
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_BAND_Z, 0.75f);
 
 /**
- * 初始误差漏斗半宽比例
+ * Corridor half-width as a fraction of the initial error
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.01
  * @max 1
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_DELTA, 0.10f);
 
 /**
- * 水平事件触发阈值比例
+ * Horizontal event-trigger fraction
  *
- * 触发阈值为此参数乘以漏斗半宽。仅在解除武装后应用，X/Y 轴共用此值。
+ * The trigger distance is this value times the corridor half-width.
+ * Applied only while disarmed. Shared by the x and y axes.
  * @min 0.05
  * @max 0.99
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_TRIG_XY, 0.76f);
 
 /**
- * 垂直事件触发阈值比例
+ * Vertical event-trigger fraction
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.05
  * @max 0.99
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_TRIG_Z, 0.95f);
 
 /**
- * 水平滑模面增益
+ * Horizontal sliding-surface gain
  *
- * 仅在解除武装后应用，X/Y 轴共用此值。
+ * Applied only while disarmed. Shared by the x and y axes.
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_KS_XY, 1.40f);
 
 /**
- * 垂直滑模面增益
+ * Vertical sliding-surface gain
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_KS_Z, 1.75f);
 
 /**
- * 水平线性趋近增益
+ * Horizontal linear reaching gain
  *
- * 仅在解除武装后应用，X/Y 轴共用此值。
+ * Applied only while disarmed. Shared by the x and y axes.
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K0_XY, 1.20f);
 
 /**
- * 垂直线性趋近增益
+ * Vertical linear reaching gain
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K0_Z, 1.80f);
 
 /**
- * 水平切换增益
+ * Horizontal switching gain
  *
- * 乘以 tanh(S / BPP_PHI_XY)。仅在解除武装后应用，X/Y 轴共用此值。
+ * Multiplies tanh(S / BPP_PHI_XY). Applied only while disarmed.
+ * Shared by the x and y axes.
  * @min 0
  * @max 5
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K1_XY, 0.20f);
 
 /**
- * 垂直切换增益
+ * Vertical switching gain
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0
  * @max 5
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_K1_Z, 0.35f);
 
 /**
- * 水平 tanh 边界层宽度
+ * Horizontal tanh boundary-layer width
  *
- * 仅在解除武装后应用，X/Y 轴共用此值。
+ * Applied only while disarmed. Shared by the x and y axes.
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_PHI_XY, 1.50f);
 
 /**
- * 垂直 tanh 边界层宽度
+ * Vertical tanh boundary-layer width
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.05
  * @max 10
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_PHI_Z, 1.20f);
 
 /**
- * 预设趋近时间
+ * Prescribed reaching time
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @unit s
  * @min 0.1
  * @max 20
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_T_PRE, 2.f);
 
 /**
- * 趋近阶段容差
+ * Reaching-phase tolerance
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_EPS_PRE, 0.1f);
 
 /**
- * 预设滑动时间
+ * Prescribed sliding time
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @unit s
  * @min 0.1
  * @max 20
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_T_SLIDE, 2.f);
 
 /**
- * 滑动阶段容差
+ * Sliding-phase tolerance
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_EPS_SLIDE, 0.1f);
 
 /**
- * 事件锚点误差最小值
+ * Minimum anchor-error magnitude
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @unit m
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_E0_MIN, 0.05f);
 
 /**
- * 触发事件所需的最小校正加速度
+ * Minimum corrective acceleration required to accept an event
  *
- * 仅在解除武装后应用。
+ * Applied only while disarmed.
  * @unit m/s^2
  * @min 0.001
  * @max 1
  * @decimal 3
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_ACC_FLOOR, 0.05f);
 
 /**
- * 起飞阶段首次垂直事件触发阈值
+ * First vertical trigger fraction during takeoff
  *
- * 此值为漏斗半宽的比例。仅在解除武装后应用。
+ * The value is a fraction of the corridor half-width.
+ * Applied only while disarmed.
  * @min 0.05
  * @max 0.99
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_TRIG_RAMP, 0.30f);
 
 /**
- * BPPSMC 水平输出加速度限幅
+ * Horizontal acceleration command limit
  *
- * 进入 PX4 原生推力映射前，北东地坐标系各水平轴的绝对加速度限值。
- * 仅在解除武装后应用，X/Y 轴共用此值。
+ * Absolute acceleration limit on each horizontal NED axis before
+ * the native PX4 thrust mapping. Applied only while disarmed.
+ * Shared by the x and y axes.
  * @unit m/s^2
  * @min 0.1
  * @max 15
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_ACC_XY, 6.f);
 
 /**
- * BPPSMC 垂直输出加速度限幅
+ * Vertical acceleration command limit
  *
- * 进入 PX4 原生推力映射前，北东地坐标系垂直轴的绝对加速度限值。
- * 仅在解除武装后应用。
+ * Absolute acceleration limit on the vertical NED axis before
+ * the native PX4 thrust mapping. Applied only while disarmed.
  * @unit m/s^2
  * @min 0.1
  * @max 15
  * @decimal 2
- * @group BPPSMC
+ * @group BIPPSMC
  */
 PARAM_DEFINE_FLOAT(BPP_ACC_Z, 10.f);

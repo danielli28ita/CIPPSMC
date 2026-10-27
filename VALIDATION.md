@@ -1,48 +1,48 @@
-# 复现包验证记录
+# Reproduction checks
 
-日期：2026-10-26，Ubuntu 22.04 amd64。完整环境见 environments/versions.json，Python 依赖通过新建 venv 安装，没有使用作者系统的 NumPy 兼容路径。
+Date: 2026-10-26, Ubuntu 22.04 amd64. The environment is `environments/versions.json`. Python dependencies were installed in a new virtual environment, not through the author's NumPy compatibility path.
 
-## 已执行
+## What was run
 
-| 项目 | 结果 | 证据 |
+| Check | Result | Evidence |
 |---|---|---|
-| 冻结源码来源 | 精确 v1.15.4 基线、32 个依赖提交、28 个 payload 校验通过 | firmware/BASELINE.json |
-| 唯一样例与参数 | 仅 log_19，原始 SHA256 一致；1153 项完整参数和 36 项 profile 精确导出 | data/PROVENANCE.json、params/ |
-| 离线轨迹与状态机 | C++ 参考几何、数值导数、边界、完整阶段、多圈、中止和 EKF 平移检查通过 | validation/offline_tests.log |
-| 来源/参数测试 | 5 项通过，包含完整参数 JSON/QGC 文本往返和 payload 校验 | validation/offline_tests.log |
-| 样例离线复算 | 14 个指标满足 rtol=1e-6、atol=1e-8 | validation/sample_recompute.log、data/expected_metrics.json |
-| 实机目标构建 | px4_fmu-v6c_onboard 成功；默认 PID、任务关闭；编译 BPPSMC 调用和轨迹模块检查通过 | validation/px4_fmu-v6c_onboard.build.* |
-| SITL 目标构建 | px4_sitl_default 成功；编译分支检查通过 | validation/px4_sitl_default.build.* |
-| 本地模拟完整任务 | 校准模型映射后 BPPSMC 两圈、降落、普通上锁完成，参数 profile 检查无差异 | validation/sitl_result.json、sitl_lifecycle.json |
+| Frozen sources | Exact v1.15.4 baseline, 32 dependency commits, 28 payload hashes | `firmware/BASELINE.json` |
+| Sample and parameters | Flight A only for the metric file; raw SHA256 matches; 1153 parameters and 36 profile values exported | `data/PROVENANCE.json`, `params/` |
+| Offline trajectory and state machine | C++ reference geometry, numerical derivatives, bounds, full stages, multiple laps, abort, and EKF shift | `validation/offline_tests.log` |
+| Provenance and parameter tests | 5 tests passed, including JSON and QGroundControl text round trip and payload hashes | `validation/offline_tests.log` |
+| Sample recomputation | 14 metrics within rtol 1e-6 and atol 1e-8 | `validation/sample_recompute.log`, `data/expected_metrics.json` |
+| Aircraft target | `px4_fmu-v6c_onboard` built; default PID, task off; controller call and trajectory module present | `validation/px4_fmu-v6c_onboard.build.*` |
+| Simulator target | `px4_sitl_default` built; branch check passed | `validation/px4_sitl_default.build.*` |
+| Local simulated task | After the model hover mapping was set, two laps, landing, and a normal disarm completed | `validation/sitl_result.json`, `sitl_lifecycle.json` |
 
-本轮构建采用本机 Git 对象镜像加速，在独立新 checkout 中恢复固定提交和包内 payload。没有复制原开发目录的构建结果或脏依赖工作树。默认网络获取入口和镜像入口共用同一套基线/依赖/文件检查；没有在全新 Ubuntu 系统上重新执行 apt 安装或完整网络下载流程。
+The build used a local Git object mirror and restored the pinned commit and payload in a new checkout. It did not copy build products or dirty dependency trees from the original development directory. The network fetch and the mirror fetch share the same baseline, dependency, and file checks. apt installation and a full network download were not repeated on a fresh Ubuntu machine.
 
-## 模拟机映射校验及结果
+## Simulator hover mapping
 
-第一轮保持原 X500 启动配置 MPC_THR_HOVER=0.60，任务流程完成，但八字 RMSE 约 **0.5086 m**、最大约 **0.7647 m**，未满足本包工程精度门槛。该结果保留于 validation/sitl_native_mapping_result.json，没有隐藏为“全通过”。
+The first simulator run kept the original X500 start value `MPC_THR_HOVER=0.60`. The task sequence completed. The figure-eight RMSE was about **0.5086 m** and the maximum about **0.7647 m**, outside this package's engineering gate. That result is kept in `validation/sitl_native_mapping_result.json`.
 
-从模型近稳输出确认映射失配后，第二轮仅在模拟启动脚本中使用 X500 专用 MPC_THR_HOVER=0.73，保持 log_19 的 BPP/F8 参数，重新运行完整任务：
+After the model mismatch was identified, a second run set an X500-only `MPC_THR_HOVER=0.73` in the simulator start script and kept the Flight A `BPP` and `F8` parameters:
 
-- 八字误差 RMSE：**0.05983 m**，最大：**0.13236 m**。
-- 两圈完整执行，记录 **9901** 个 BPPSMC 调试样本，任务落地普通上锁。
-- 满足本包工程门槛 RMSE <0.15 m、最大 <0.30 m。
-- 模拟机为 SYS_AUTOSTART=4001、GPS/模拟传感器，EV_CTRL=0；实机样例为 4050、外部定位，不能混为同一工况。
-- 个别 F8 默认参数在 logger 启动后模块构造，没有作为 ULog 初始值写入；验证程序明确记录哪些值从对应编译参数元数据补齐，不冒充独立日志观测。
+- Figure-eight RMSE **0.05983 m**, maximum **0.13236 m**.
+- Two full laps, **9901** controller debug samples, landing, and a normal disarm.
+- Inside this package's gate: RMSE below 0.15 m and maximum below 0.30 m.
+- The simulator airframe is `SYS_AUTOSTART=4001` with GPS and simulated sensors, and `EV_CTRL=0`.
+- Some `F8` defaults are constructed after the logger starts and are absent from the ULog initial set. The checker records which values were filled from the compiled parameter metadata. Those fills are not independent log observations.
 
-仿真专用 0.73 不写入实机参数文件，也不修改冻结控制器源码。本轮生成的两个模拟 ULog 留在被排除的 workspace，**压缩包中仍只有 log_19 一份 ULog 样例**。
+The simulator-only value 0.73 is not written into the aircraft parameter file and does not modify the frozen controller sources. The two simulator ULogs from this round stay in the excluded workspace. The flight logs shipped here are Flight A and Flight B.
 
-## 实机固件产物
+## Aircraft firmware image
 
-板型 ID=56，FLASH 1,900,252 / 1,966,080 bytes（约 96.65%）。附 .px4、ELF、parameters.xml、airframes.xml 和构建清单。固件默认 MPC_CTRL_METHOD=0、F8_ENABLE=0；样例参数通过独立 profile 配置。
+Board id 56. Flash use 1,900,252 / 1,966,080 bytes (about 96.65%). The image includes the `.px4`, ELF, `parameters.xml`, `airframes.xml`, and the build manifest. Firmware defaults are `MPC_CTRL_METHOD=0` and `F8_ENABLE=0`. The sample parameters are a separate profile.
 
-原始样例确实记录了实机完整任务；本轮重建没有连接或刷写真实飞控。未证明本轮固件与当时历史飞行二进制逐字节一致，不声称本轮新实机飞行已验证。
+Flight A records a completed real task. This rebuild did not connect to or flash a flight controller. The rebuilt firmware is not proven byte-identical to the historical flight binary, and this round does not claim a new flight test.
 
-## 未覆盖
+## Not covered
 
-- 新硬件刷写、实体 HITL、不同动力/电池/载荷的重新实飞。
-- ROS/动捕/外部定位上游发布器的设备级重建，其型号和源码未提供。
-- 额外 `--extra-checks` 的实际 RC/Kill/失联回归；本轮仅执行默认完整模拟任务，相关状态机部分有离线测试。
-- 多次随机扰动统计、论文全部实验、其他控制器性能对照或字节级固件构建一致性。
-- 样例 5 V 低压文本的物理电源根因；记录被保留并明确说明。
+- A new hardware flash, physical HITL, or another flight with different propulsion, battery, or payload.
+- A device-level rebuild of the ROS, motion-capture, or external-pose publisher. Its model and source were not provided.
+- A live RC, kill, and link-loss regression under `--extra-checks`. This round ran the default full simulator task. Parts of that state machine have offline tests.
+- Multi-run disturbance statistics, the full paper experiment, performance tables for the other controllers, or byte-level identity of the firmware build.
+- The physical cause of the Flight A 5 V low-voltage message. The record is kept and stated.
 
-候选压缩包已在独立解压目录中新建 Python venv，执行完整性检查、离线测试和样例复算，全部通过；结果见 validation/release_checks.json。最终包加入这些验证记录后重新生成，并再次检查归档完整性。
+The candidate archive was unpacked in a separate directory, given a new Python virtual environment, and checked for integrity, offline tests, and sample recomputation. All of those checks passed; see `validation/release_checks.json`. The validation records were then added and the archive integrity was checked again.

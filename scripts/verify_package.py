@@ -18,7 +18,15 @@ for name, info in manifest['files'].items():
             h.update(chunk)
     if h.hexdigest() != info['sha256']:
         raise SystemExit('Checksum mismatch: '+name)
-samples = list((ROOT/'data').rglob('*.ulg'))
-if len(samples) != 1 or samples[0].name != 'log_19_2026-10-19-10-01-54.ulg':
-    raise SystemExit('Unexpected sample data')
-print('PASS: '+str(len(manifest['files']))+' release files match SHA-256; only requested log_19 is bundled')
+samples = {path.name: path for path in (ROOT/'data').rglob('*.ulg')}
+expected = {
+    'log_19_2026-10-19-10-01-54.ulg': '34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e',
+    'log_2.ulg': 'd96751a3576ee280d0c288d8a53f4f393f5006c9c6b5c32192b82d8dcbfde632',
+}
+found = {}
+for name, path in samples.items():
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    found[name] = digest
+if found != expected:
+    raise SystemExit('Unexpected flight logs: '+str(sorted(found)))
+print('PASS: '+str(len(manifest['files']))+' release files match SHA-256; Flight A and Flight B logs match')

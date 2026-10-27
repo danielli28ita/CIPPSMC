@@ -1,52 +1,52 @@
-# 实机、外部定位与任务操作
+# Aircraft, external pose, and task operation
 
-本包实飞证据仅来自 log_19。日志记录了完整 BPPSMC 两圈任务、落地和普通上锁。本次打包没有连接实体飞控，不能把重新构建的固件称为本轮新实飞通过；历史飞行二进制的逐字节身份也未认证。
+The flight evidence in this package is Flight A (`log_19`) and Flight B (`data/log_2.ulg`). Flight A records a complete two-lap task, landing, and a normal disarm. Building this package did not connect to a flight controller. The rebuilt firmware is not a new flight acceptance, and the historical flight binary is not certified byte for byte.
 
-## 已知配置与仍需提供的物理信息
+## Known configuration and physical items still missing
 
-| 项目 | 从样例可确认的配置 |
+| Item | What the Flight A log establishes |
 |---|---|
-| 飞控 | PX4_FMU_V6C / Pixhawk 6C |
-| PX4 基线 | v1.15.4，99c40407ffd7ac184e2d7b4b293f36f10fe561ef |
-| 机型参数 | SYS_AUTOSTART=4050，Generic 250 Racer；SYS_HITL=0 |
-| 控制器 | MPC_CTRL_METHOD=1，ET-BPPSMC |
-| 参考轨迹 | 飞控内部伯努利双纽线，0.8 m 高、a=1.6 m、25 s/圈、2 圈 |
-| 定位配置 | EKF2_EV_CTRL=11、EKF2_GPS_CTRL=0、EKF2_HGT_REF=3；融合外部位置/高度/航向，不融合外部速度 |
-| 外部位置接口 | vehicle_visual_odometry；消息名不能确定是视觉还是动捕设备 |
-| 动力与机械 | 电机型号/KV、桨叶型号、ESC/协议、电池串数/容量、质量/载荷未提供 |
-| 定位系统硬件与发布程序 | 未提供设备型号、外部软件源码和真实采样/传输延迟 |
-| 地面站、接收机 | QGC 版本及接收机实物型号未由日志确认 |
+| Flight controller | PX4_FMU_V6C / Pixhawk 6C |
+| PX4 baseline | v1.15.4, `99c40407ffd7ac184e2d7b4b293f36f10fe561ef` |
+| Airframe parameter | `SYS_AUTOSTART=4050`, Generic 250 Racer; `SYS_HITL=0` |
+| Controller | `MPC_CTRL_METHOD=1` |
+| Reference | Onboard Bernoulli lemniscate, 0.8 m high, a = 1.6 m, 25 s/lap, 2 laps |
+| Pose configuration | `EKF2_EV_CTRL=11`, `EKF2_GPS_CTRL=0`, `EKF2_HGT_REF=3`; external position, height, and yaw are fused, external velocity is not |
+| External position interface | `vehicle_visual_odometry`; the message name does not identify a camera or a motion-capture device |
+| Propulsion and mechanics | Motor model and KV, propeller, ESC and protocol, battery series and capacity, mass, and payload are not in the log |
+| Pose hardware and publisher | Device model, external software, and the true sample and transport delay are not provided |
+| Ground station and receiver | QGroundControl version and the physical receiver are not identified by the log |
 
-上述未提供项不妨碍源码构建、日志复算或包内 SITL；但阻止将物理实飞条件宣称为完整可复制。请用实际设备记录补充它们，不从 Generic 250 名称推断动力配置。机载轨迹无需主机设定值发布器，外部定位仍可能需要主机及其原有桥接程序。
+Missing items do not block a source build, log recomputation, or the packaged simulator check. They do block a claim that the physical flight condition is fully reproducible. Record them from the actual equipment. Do not infer propulsion from the name Generic 250. The onboard trajectory does not need a companion trajectory publisher. External pose may still need its existing bridge.
 
-## 固件和配置顺序
+## Firmware and configuration order
 
-1. 接线、传感器校准、执行器测试期间拆下全部桨叶。备份现有参数。按实际 Pixhawk 6C 和动力系统说明接线，官方参考：[Pixhawk 6C 接线](https://docs.px4.io/v1.15/en/assembly/quick_start_pixhawk6c)。
-2. 在 QGC 自定义固件入口选择本包 `artifacts/px4_fmu-v6c_onboard/px4_fmu-v6c_onboard.px4`。它是实机板级目标，不是 HITL 模拟输出固件。核对 SYS_AUTOSTART=4050、SYS_HITL=0。
-3. 保留适用于实际机体的传感器校准、动力、输出、电池和接收机配置。不得把 `all_parameters_REFERENCE_ONLY.params` 当作另一架飞机的完整初始化文件。
-4. 导入前先查看 `params/flight_profile.params`：其中仅含从 log_19 提取的 BPP/F8、控制器选择和悬停映射。F8_ENABLE=1 在重启后启用模块，MPC_CTRL_METHOD=1 选择任务内 BPPSMC；原生内环和实机参数仍需要匹配实际机体。
-5. 复现样例定位条件时，恢复实际外部定位接口，核对 NED/FRD 坐标、姿态方向、外参、尺度、有效时间戳和更新率。日志中的 EV 配置和 0 延迟参数是记录值，不是未知定位系统的通用设置。参考：[PX4 v1.15 外部定位](https://docs.px4.io/v1.15/en/ros/external_position_estimation)。
-6. 核对 RC、模式选择、解锁/上锁、Kill、RC 丢失和 OFFBOARD 丢失的实际配置及效果。具体开关通道由接收机实测决定，不能直接套用 SITL 的模拟通道映射。
+1. Remove all propellers during wiring, sensor calibration, and actuator tests. Back up the current parameters. Wire the Pixhawk 6C to the actual power system. Official reference: [Pixhawk 6C wiring](https://docs.px4.io/v1.15/en/assembly/quick_start_pixhawk6c).
+2. In QGroundControl, select `artifacts/px4_fmu-v6c_onboard/px4_fmu-v6c_onboard.px4` as a custom firmware. It is the aircraft board target, not a HITL simulator image. Check `SYS_AUTOSTART=4050` and `SYS_HITL=0`.
+3. Keep the sensor calibration, propulsion, output, battery, and receiver settings that belong to the actual vehicle. Do not use `all_parameters_REFERENCE_ONLY.params` as a full initialization file for another aircraft.
+4. Read `params/flight_profile.params` before importing it. It contains only the `BPP` and `F8` values, the controller selection, and the hover mapping extracted from Flight A. `F8_ENABLE=1` enables the module after reboot. `MPC_CTRL_METHOD=1` selects this controller inside the task. The native inner loops and the remaining aircraft parameters still have to match the vehicle.
+5. To repeat the sample's pose condition, restore the actual external-pose interface and check the NED/FRD frames, attitude sign, extrinsics, scale, valid timestamps, and update rate. The logged external-vision settings and the zero-delay parameters are recorded values, not a generic setup for an unknown pose system. Reference: [PX4 v1.15 external position](https://docs.px4.io/v1.15/en/ros/external_position_estimation).
+6. Check the real RC, mode selection, arm and disarm, kill, RC-loss, and OFFBOARD-loss behavior. Switch channels come from the receiver. Do not copy the simulator's virtual channel map.
 
-## 机载任务流程
+## Onboard task
 
-落地且上锁时应用参数，重启后运行：
+Apply parameters while landed and disarmed, then reboot:
 
 ```text
 figure8_trajectory status
 mc_pos_control status
 ```
 
-等待任务 ready，先在已经验证的手动模式人工解锁，再从地面切入 OFFBOARD。出现 `Figure8 started: BPPSMC` 后任务依次完成起飞、悬停、两圈、返回悬停和下降。模块不负责人工解锁，也不需要主机重复请求 OFFBOARD。避免同时运行另一个轨迹发布器。
+Wait until the task is ready. Arm by hand in a manual mode that has already been checked, then switch from the ground into OFFBOARD. After `Figure8 started: BPPSMC`, the task runs takeoff, hover, two laps, return hover, and descent. The module does not arm the vehicle and does not need the companion computer to request OFFBOARD again. Do not run a second trajectory publisher at the same time.
 
-正常结束以 `Figure8 complete: landed and disarmed`、飞控上锁和电机停止共同确认。随后把解锁开关恢复上锁位并退出 OFFBOARD。任务启用锁存策略下，人工退出 OFFBOARD 会中止任务，并按源码使用原生控制链路；不会在空中自动重新开始任务。
+A normal ending is `Figure8 complete: landed and disarmed`, together with the controller disarmed and the motors stopped. Then return the arm switch to the disarmed position and leave OFFBOARD. With the enable policy latched, leaving OFFBOARD by hand aborts the task and returns to the native control path. The task does not restart in the air.
 
-Kill 是紧急停桨，不能作为普通降落方式。接管模式的油门含义要按实际模式确认。此处只说明包内实现和已记录样例，不替代机主既有操作规程或对未知机体的调参。
+Kill stops the motors immediately. It is not a normal landing. Confirm what the throttle does in the takeover mode. This note describes the packaged implementation and the recorded samples. It does not replace the owner's procedure or a tuning session on an unknown vehicle.
 
-## 样例中必须保留的记录
+## A record that stays with Flight A
 
-log_19 在约 46.655 s 有一次 `Avionics Power low: 4.79 Volt` 文本。稀疏 system_power 记录未捕获同一低值，最低约 4.817 V；二者采样频率不同，不能删除告警或声称电压全程正常。此后任务完成且无 failsafe，日志未证明该告警造成跟踪误差。
+At about 46.655 s, Flight A contains `Avionics Power low: 4.79 Volt`. The sparse `system_power` topic does not contain that same sample; its lowest value is about 4.817 V. The two topics are sampled at different rates. The warning is not deleted, and the log does not support a claim that the voltage was nominal for the whole flight. The task finishes afterward without a failsafe, and the log does not show that the warning caused the tracking error.
 
-battery_status 的连接/电压记录不能当作可靠动力电池测量。新的实飞记录应补充可信电池、电源和实验条件；这些已知信息边界也写入样例报告。
+`battery_status` connection and voltage fields are not a reliable propulsion-battery measurement. A new flight record should add a trusted battery, power, and test-condition log. The same limits are stated in the sample report.
 
-SITL 启动脚本、模拟 RC 映射和 X500 的仿真专用悬停映射均不能导入真实飞机。
+The simulator start script, its virtual RC map, and the X500 hover mapping used only in simulation must not be loaded onto the aircraft.

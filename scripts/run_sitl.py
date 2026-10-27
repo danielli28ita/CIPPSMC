@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""仅在本地 SITL 用模拟 RC 开关验证机载任务；不发送任何轨迹设定值。"""
+"""Run the onboard task in local SITL with a simulated RC switch. Publish no trajectory setpoint."""
 
 import argparse
 import datetime
@@ -42,7 +42,7 @@ class TestRun:
             ["gz", "sim", "-s", "-r", "-v", "3", "--render-engine", "ogre",
              str(PX4 / "Tools/simulation/gz/worlds/default.sdf")], env=env,
             stdout=self.gz_log, stderr=subprocess.STDOUT, start_new_session=True)
-        print("等待 Gazebo 模型生成服务……", flush=True)
+        print("Waiting for the Gazebo model spawn service...", flush=True)
         deadline = time.monotonic() + 90
         ready = False
         while time.monotonic() < deadline:
@@ -60,7 +60,7 @@ class TestRun:
             self.gz_process.terminate()
             self.gz_process.wait(timeout=10)
             self.gz_log.close()
-            raise RuntimeError("Gazebo 服务未就绪；查看 gazebo.log")
+            raise RuntimeError("Gazebo service was not ready; see gazebo.log")
         self.process = subprocess.Popen(
             [str(PX4 / "build/px4_sitl_default/bin/px4"),
              str(PX4 / "build/px4_sitl_default/etc"), "-s", str(Path(__file__).with_name("sitl_onboard.rc"))],
@@ -293,7 +293,7 @@ def main():
         run.close()
         (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
         print(json.dumps(result, indent=2), flush=True)
-        print("验证目录：", output, flush=True)
+        print("Result directory:", output, flush=True)
 
 
 if __name__ == "__main__":

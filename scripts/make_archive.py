@@ -40,8 +40,12 @@ def main():
             files.append(path)
     files.sort()
     samples = [p for p in files if p.suffix == '.ulg']
-    if len(samples) != 1 or samples[0].name != 'log_19_2026-10-19-10-01-54.ulg':
-        raise SystemExit('Release must contain exactly the requested log_19')
+    expected = {
+        'log_19_2026-10-19-10-01-54.ulg',
+        'log_2.ulg',
+    }
+    if {p.name for p in samples} != expected:
+        raise SystemExit('Release must contain Flight A and Flight B logs')
     manifest = {'version': '1.0.0', 'date': '2026-10-26',
                 'files': {p.relative_to(ROOT).as_posix(): {'sha256': sha(p), 'bytes': p.stat().st_size} for p in files}}
     mp = ROOT/'RELEASE_MANIFEST.json'

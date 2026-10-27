@@ -1,9 +1,9 @@
-# 第三方来源
+# Third-party sources
 
-- PX4-Autopilot v1.15.4，BSD 3-Clause；已保留源码版权头和根 LICENSE。完整上游及子模块由固定提交获取，各依赖保留其原始许可证。
-- 冻结控制器、机载任务和集成文件来自当前项目工作树，来源/基线/文件 SHA256 位于 firmware/BASELINE.json。没有从其他实飞日志导入参数或样例结果。
-- 离线轨迹测试中的 LemniscateTrajectory 和 TrajectorySample 来自项目既有复现参考生成器；原始包许可证副本见 LICENSES/BPPSMC-reference.txt。
-- Python 库和 Gazebo 通过系统/Python 包管理器安装，没有将其二进制库冒充本项目源码。版本锁位于 environments/，其许可证以相应上游分发内容为准。
-- 唯一 ULog 由用户提供，用于本包声明的飞行样例复算；原始字节和校验和保留。
+- PX4-Autopilot v1.15.4, BSD 3-Clause. Source copyright headers and the root LICENSE are kept. The upstream tree and submodules are fetched at pinned commits, and each dependency keeps its own license.
+- The frozen controller, onboard task, and integration files come from this project's working tree. Provenance, the baseline, and per-file SHA256 values are in `firmware/BASELINE.json`. Parameters and sample results were not imported from any other flight log.
+- `LemniscateTrajectory` and `TrajectorySample` in the offline trajectory test come from the project's existing reference generator. A copy of that package license is in `LICENSES/BPPSMC-reference.txt`.
+- Python libraries and Gazebo are installed through the system or Python package manager. Their binaries are not presented as source of this project. Version locks are in `environments/`, and their licenses are those of the upstream distributions.
+- The ULogs were supplied for the flight samples declared by this package. The original bytes and checksums are kept.
 
-本包不包含历史论文汇总表、其他控制器实飞样例或其他 ULog。新加入的打包/分析脚本使用根 LICENSE 的 BSD 3-Clause 条款；现有文件的原始声明保留。
+This package does not include historical paper summary tables, flight samples of the other controllers, or other ULogs. Newly added packaging and analysis scripts use the BSD 3-Clause terms in the root LICENSE. Existing copyright notices stay on their files.

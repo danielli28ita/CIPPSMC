@@ -1,35 +1,37 @@
-# 唯一实飞样例：log_19
+# Flight A: log_19
 
-来源文件：`log_19_2026-10-19-10-01-54.ulg`。原始字节未修改。SHA256 见 [PROVENANCE.json](PROVENANCE.json)。文件名和日志内部时间标签不作为精确墙钟认证。分析时间以 ULog 起点为零。
+Source file: `log_19_2026-10-19-10-01-54.ulg`. The bytes are unchanged. The SHA256 is in [PROVENANCE.json](PROVENANCE.json). The file name and the log's internal time label are not a certified wall clock. Times below are seconds from the ULog start.
 
-样例约 83.565 s，MPC_CTRL_METHOD=1、KS_XY=1.70、KS_Z=2.00，轨迹 0.8 m 高、a=1.6 m、25 s/圈、两圈。1153 个初始参数全部导出，飞行中没有参数变化。
+The log lasts about 83.565 s, with `MPC_CTRL_METHOD=1`, `KS_XY=1.70`, and `KS_Z=2.00`. The path is 0.8 m high, with scale a = 1.6 m, 25 s per lap, and two laps. All 1153 initial parameters were exported. No parameter changes during the flight.
 
-## 任务和指标
+Flight B is a second real flight of the same onboard task. It is included in the README figures and is not part of the numbers in this report.
 
-2.010 s 开始任务，19.049 s 开始八字，69.069 s 返回悬停，74.069 s 降落，81.614 s 检测落地，82.616 s 内部命令上锁，82.630 s 任务完成。无日志 dropout，无事件重锚。
+## Task and metrics
 
-| 八字段指标 | 数值 |
+The task starts at 2.010 s, the figure-eight at 19.049 s, the return hover at 69.069 s, the descent at 74.069 s, touchdown detection at 81.614 s, the internal disarm command at 82.616 s, and task completion at 82.630 s. The log has no dropouts and no corridor-center resets.
+
+| Figure-eight metric | Value |
 |---|---:|
-| 三维位置 RMSE | 0.10262372 m |
-| 三维最大误差 | 0.13943065 m |
-| 水平位置 RMSE | 0.09590732 m |
-| X/Y/Z 平均误差 | -0.079265 / -0.024416 / -0.032456 m |
-| 第一/第二圈三维 RMSE | 0.102245 / 0.103001 m |
+| Three-dimensional position RMSE | 0.10262372 m |
+| Three-dimensional maximum error | 0.13943065 m |
+| Horizontal position RMSE | 0.09590732 m |
+| Mean error, x / y / z | -0.079265 / -0.024416 / -0.032456 m |
+| Lap 1 / lap 2 three-dimensional RMSE | 0.102245 / 0.103001 m |
 
-Z 平均误差为负，表示高度平均略高于参考。完整分阶段、分圈、姿态及输出统计见 [summary.json](analysis/summary.json)。
+A negative mean z error means the vehicle is, on average, slightly above the reference. Stage, lap, attitude, and output statistics are in [analysis/summary.json](analysis/summary.json).
 
-## 统计口径
+## Definitions
 
-- 位置记录约 10 Hz、参考约 5 Hz；在位置时间点线性插值参考，不对非同时采样的数据伪称逐帧精确。
-- 用前一条 figure8_status 划分 stage=5 八字段；圈数来自该状态消息。误差为 EKF 估计位置减参考，RMSE=sqrt(mean(error²))。
-- 三维误差为三轴误差欧氏范数；不将接地后继续向地面以下推进的下降参考误差混入八字指标。
-- 结果不是独立定位真值误差，不支持由一架次推出统计优势。
-- 滑模项分解仅用于本样例 rho=0、无重锚工况；它使用跨主题插值及记录的 S 反算速度误差，不是系统辨识或候选参数闭环验证。
+- Position is logged near 10 Hz and the reference near 5 Hz. The reference is linearly interpolated onto the position timestamps. Samples that were not simultaneous are not treated as exact pairs.
+- The figure-eight window is `figure8_status` stage 5, using the previous status sample. Lap counts come from that message. Error is the EKF position minus the reference. RMSE is the square root of the mean squared error.
+- The three-dimensional error is the Euclidean norm of the three axis errors. Descent-reference error after touchdown is not included in the figure-eight metrics.
+- The errors are not an independent position truth. One flight does not support a statistical ranking.
+- The sliding-term split applies only to this sample's zero-center window with no reset. It interpolates across topics and reconstructs the velocity error from the logged surface. It is not a system identification and not a closed-loop test of a candidate parameter set.
 
-## 保留的实际记录与边界
+## Records that stay in the report
 
-约 46.655 s 有一次 5 V 航电低压文本：4.79 V；稀疏电源主题最低约 4.817 V，未捕获同一低值。样例仍完成任务且未出现 failsafe，但不能删去该告警或宣称所有供电检查均正常。动力电池 connected/电压记录不可靠，不能从中拟合电池压降。外部定位设备、动力配置和实际载荷型号没有提供。
+At about 46.655 s the log contains one 5 V avionics-low message, 4.79 V. The sparse power topic reaches about 4.817 V and does not contain that same sample. The task still finishes without a failsafe. The warning is not removed, and the log does not show that every power check was nominal. The `battery_status` connection and voltage fields are not a reliable propulsion-battery measurement. The external pose device, propulsion, and payload model are not in the log.
 
-日志 Git 基线只能标识上游版本，不能证明本包重建固件与当时实飞二进制逐字节相同。
+The Git hash in the log identifies the upstream baseline. It does not prove that the firmware rebuilt in this package is byte-identical to the binary that flew.
 
-[跟踪图](analysis/tracking.png) · [水平轨迹](analysis/trajectory.png) · [滑模项](analysis/sliding_terms.png) · [期望指标](expected_metrics.json)
+[Tracking plot](analysis/tracking.png) · [Horizontal path](analysis/trajectory.png) · [Sliding terms](analysis/sliding_terms.png) · [Expected metrics](expected_metrics.json)

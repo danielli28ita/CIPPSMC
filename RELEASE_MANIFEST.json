@@ -7,8 +7,8 @@
       "bytes": 39
     },
     "CHANGELOG.md": {
-      "sha256": "30c4cec5bd9e72d9e2923c1fe031fc45ae33af9e8edafe61d388870318c4d239",
-      "bytes": 878
+      "sha256": "4fe5e842ede883a604a6df3d414eb35578b3652d3fb64e31af42041d9a0aebee",
+      "bytes": 1162
     },
     "LICENSE": {
       "sha256": "4f486239f62804b2190ff52b3005f087cf1033342012152e6383bdad6b891cc4",
@@ -19,16 +19,16 @@
       "bytes": 1527
     },
     "README.md": {
-      "sha256": "8de0d406e5fd2b404ab88f3321a24a292f0dd166b511908e18717f06f9e558e7",
-      "bytes": 8208
+      "sha256": "4fc51865eac0d73e4b2005eee7805072ea3ae3b3528a822e30d9555eeb1f6b4f",
+      "bytes": 8974
     },
     "THIRD_PARTY_NOTICES.md": {
-      "sha256": "53f6d5d0628c0d6b124df241634f64d5ecd51b3b1438650a35a69f7dc5b950c0",
-      "bytes": 1050
+      "sha256": "f7c4455d92f457d8af2c6040689ac81c123833d30e9541a8403332abb858103d",
+      "bytes": 1315
     },
     "VALIDATION.md": {
-      "sha256": "e0666e487afb8ea6cb615abce00950928fc68f80eae47600649b0a145f917f53",
-      "bytes": 4258
+      "sha256": "c6ec850803aa004df957bdf96e3d31cdb3b9753dc0817f45e80f2abf3977c846",
+      "bytes": 4680
     },
     "analysis/analyze_sliding_terms.py": {
       "sha256": "961282db3e4abdbf676c72a833564ffcbf5f204f27cd63060c865d9e213fc273",
@@ -63,8 +63,8 @@
       "bytes": 1048
     },
     "data/REPORT.md": {
-      "sha256": "e15799a1e003e487b3422528f3ac07e4d8f2a20e0f103432862292d61c4026d4",
-      "bytes": 2471
+      "sha256": "b8f055a36c75a381f8229b4b4a808794aed6ef18737b2ccc0df4068c4f196686",
+      "bytes": 3282
     },
     "data/analysis/metrics.json": {
       "sha256": "2ee372bcc329889a44a22f1bd32f719aa991a6f3ec06ecd3271c3ac44b03ea83",
@@ -107,16 +107,16 @@
       "bytes": 10265871
     },
     "docs/ALGORITHM.md": {
-      "sha256": "0ecdf69cfbde94afcbc769d80eb82e56336280fa25c3ba14187364c62f99cf99",
-      "bytes": 3648
+      "sha256": "3b419a41db040b2dba5a435b85afc8abfedb945e612c3bffb4f5dba411dea1f5",
+      "bytes": 4428
     },
     "docs/PARAMETERS.md": {
-      "sha256": "e6044af330b66d46ab849fbe7d6ce85a68d19ae3824179c097d81babfe27b889",
-      "bytes": 3698
+      "sha256": "1ed1c9c4971804d0354cde884f0966e3beb7e42c9c1b806b88a4a4b996ff16eb",
+      "bytes": 4406
     },
     "docs/REAL_AIRCRAFT.md": {
-      "sha256": "9fd9f00375805df798b2bfe19bdfe8e15f19ac83abeb92c338c19123d6f7a866",
-      "bytes": 4683
+      "sha256": "43b1500f5ecd12c07fb39a1d52abd71460cf72d3a0f6a1f8ea54874d6cb47a27",
+      "bytes": 5616
     },
     "environments/requirements.lock.txt": {
       "sha256": "560e2121395530269d8b050cbd40db2bc51303bc57b3a128b1aa2fd5e181e894",
@@ -127,8 +127,8 @@
       "bytes": 1372
     },
     "firmware/BASELINE.json": {
-      "sha256": "2e2d2012f953eeb7a922d23587dc7c4ae39f6e6c56b2fc10b1c94590bba5f57e",
-      "bytes": 14755
+      "sha256": "79d030104e907235b217b9b3288ffbd49bd3559b6ce2e54b1234d6904238d5b7",
+      "bytes": 15104
     },
     "firmware/against-v1.15.4.patch": {
       "sha256": "06e0e560c5d0fee2a771c879e9fb91f90e5aecb121ab019fdf1e836441258c94",
@@ -235,8 +235,8 @@
       "bytes": 2070
     },
     "firmware/overlay/src/modules/mc_pos_control/bppsmc_params.c": {
-      "sha256": "abb4ecd0c90663689b4419401fc0f3d74811a84e86cb43cc93aaee98d731a6b3",
-      "bytes": 5192
+      "sha256": "a18fbb4538975707d7e9262b9d09ec065f8f14f0cc634a6ceda93702b5b5be9e",
+      "bytes": 5489
     },
     "firmware/overlay/src/modules/simulation/gz_bridge/GZBridge.cpp": {
       "sha256": "83a08702e64f490c584875e0c1b6b192acbc8070a6b8000866b6a651430dc4c9",
@@ -279,16 +279,16 @@
       "bytes": 2218
     },
     "scripts/make_archive.py": {
-      "sha256": "e5372c4679ed807a5238ecaa2fbcb761b9e65282f34809ba5f3d7d2067e67ada",
-      "bytes": 2807
+      "sha256": "ff11d7e1fab896ec1ed3a8e0e652cf52379245dbd974e2362b136d4f09f4c25f",
+      "bytes": 2856
     },
     "scripts/reproduce.py": {
       "sha256": "5c9b9a5acb5c969cb6bab1906f7d8ed443ec37740e0383a5454f4bbcc8a5a3af",
       "bytes": 8215
     },
     "scripts/run_sitl.py": {
-      "sha256": "b6049bebae8af58bf55bb2affdbd9af05fe75f75728ba064d1526da0478fd8dc",
-      "bytes": 12883
+      "sha256": "8ce4a148c67bdee0529f4ce688d79fd5cf04c1af92d9fbe060fffe481a27ab7e",
+      "bytes": 12897
     },
     "scripts/setup_ubuntu22.sh": {
       "sha256": "d12a28c0b27069d53ccc846f035cb128ed61ca13f214861c44f9304a5207c46e",
@@ -307,8 +307,8 @@
       "bytes": 884
     },
     "scripts/verify_package.py": {
-      "sha256": "8081b83c76354928165572908f0b4a0147aaac21025a00928b7ee206957c6349",
-      "bytes": 1084
+      "sha256": "1bbe0ab6f0386ecf38507bdb68837af7729608f6868c0b72528d2eeaa13b6a50",
+      "bytes": 1410
     },
     "tests/figure8_mission_test.cpp": {
       "sha256": "e999538c31d2c5abc7d0f4f7c55dbffa3a61c18fb1294c2e86864b3e9ed3fc64",
@@ -327,8 +327,8 @@
       "bytes": 2215
     },
     "tests/test_release.py": {
-      "sha256": "1705a73ffeb91ee13ff931a504b7c13056647fe5bf9fe49c5507905be2a64087",
-      "bytes": 2272
+      "sha256": "fec8963bfed4047543c16ac321282308457b41d9294d4cf029af0240f4ea14d9",
+      "bytes": 2555
     },
     "validation/RESULTS.json": {
       "sha256": "cc8fb572ee2d95deb02772e6781e382cd3d992b46fb6fe96a9880f2fd8e494c8",

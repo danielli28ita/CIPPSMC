@@ -11,12 +11,15 @@ ROOT = Path(__file__).resolve().parents[1]
 class ReleaseChecks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.samples = list((ROOT/'data').glob('*.ulg'))
-        cls.log = ULog(str(cls.samples[0]))
+        cls.samples = sorted((ROOT/'data').glob('*.ulg'), key=lambda path: path.name)
+        cls.log = ULog(str(ROOT/'data/log_19_2026-10-19-10-01-54.ulg'))
 
     def test_only_requested_sample(self):
-        self.assertEqual([p.name for p in self.samples], ['log_19_2026-10-19-10-01-54.ulg'])
-        self.assertEqual(hashlib.sha256(self.samples[0].read_bytes()).hexdigest(), '34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e')
+        names = [p.name for p in self.samples]
+        self.assertEqual(names, ['log_19_2026-10-19-10-01-54.ulg', 'log_2.ulg'])
+        hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in self.samples}
+        self.assertEqual(hashes['log_19_2026-10-19-10-01-54.ulg'], '34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e')
+        self.assertEqual(hashes['log_2.ulg'], 'd96751a3576ee280d0c288d8a53f4f393f5006c9c6b5c32192b82d8dcbfde632')
 
     def test_parameters_exactly_from_log(self):
         self.assertEqual(json.loads((ROOT/'params/all_parameters.json').read_text()), self.log.initial_parameters)

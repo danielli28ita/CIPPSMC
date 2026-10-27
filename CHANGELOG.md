@@ -1,9 +1,14 @@
 # 1.0.0 — 2026-10-26
 
-- 冻结当前实飞 ET-BPPSMC、机载伯努利任务、PX4 集成和所需 Harmonic 适配，共 28 个修改/新增文件。
-- 固定 PX4 v1.15.4 基线和列出的 32 个子模块提交，新增独立获取、构建和二进制控制分支检查入口。
-- 仅收录 log_19_2026-10-19-10-01-54.ulg；导出 1153 个初始参数和 36 个控制器/任务配置值，保留 float32 反序列化的精确值。
-- 建立独立 Python 环境及版本锁，避免依赖作者的 NumPy 兼容路径。
-- 新增包内复算、期望指标、原始轨迹/阶段测试及参数来源检查。
-- 重新编写当前版本的构建、参数、硬件与复现边界文档，不沿用旧构建脚本的绝对目录依赖或历史状态描述。
-- 本轮不修改控制律，不把实飞调参值改成全部固件默认值；未进行新的实体刷写或飞行。
+- Freeze the real-flight controller, the onboard Bernoulli-lemniscate task, the PX4 integration, and the Harmonic adapter: 28 modified or added files.
+- Pin the PX4 v1.15.4 baseline and the 32 listed submodule commits. Add an independent fetch, build, and binary control-branch check.
+- Include `log_19_2026-10-19-10-01-54.ulg` as the metric sample. Export all 1153 initial parameters and the 36 controller and task values, keeping the exact float32 values.
+- Add a separate Python environment and a lock file, without using the author's NumPy compatibility path.
+- Add in-package recomputation, expected metrics, the original trajectory and stage tests, and the parameter-provenance check.
+- Rewrite the build, parameter, hardware, and reproduction-boundary documents for this version.
+- Do not change the control law and do not turn the flight-tuned values into every firmware default. No new flash and no new flight were performed for this package.
+
+# 2026-10-27
+
+- Publish the package under the paper title, with the short name BIPPSMC.
+- Add Flight B (`data/log_2.ulg`) and redraw the README figures from Flight A and Flight B only.
