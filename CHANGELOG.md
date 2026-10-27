@@ -12,3 +12,4 @@
 
 - Publish the package under the paper title, with the short name CIPPSMC.
 - Add Flight B (`data/log_2.ulg`) and redraw the README figures from Flight A and Flight B only.
+- Add [docs/REAL_FLIGHT.md](docs/REAL_FLIGHT.md): platform, onboard task, controller configuration, and the 36-parameter Flight A table with per-value sources. Link it from the README.

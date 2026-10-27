@@ -17,6 +17,20 @@ This repository holds the PX4 v1.15.4 position-controller sources, two real-flig
 
 Both logs record the onboard figure-eight task with `MPC_CTRL_METHOD=1`. The bytes are unchanged. Numeric metrics already computed for Flight A are in [data/REPORT.md](data/REPORT.md).
 
+## Real-flight setup
+
+Platform, task timing, controller selection, and the full 36-parameter Flight A profile are in [docs/REAL_FLIGHT.md](docs/REAL_FLIGHT.md). Key recorded values:
+
+| Item | Value |
+|---|---|
+| Airframe / board | `SYS_AUTOSTART=4050` (250-class), Pixhawk 6C (`PX4_FMU_V6C`), PX4 v1.15.4 (`99c40407…`) |
+| Sensing | External vision (`EKF2_EV_CTRL=11`, `EKF2_HGT_REF=3`); no GPS fusion |
+| Task | Takeoff 12 s → hover 5 s → figure-eight 2× (`F8_RADIUS=1.6` m, `F8_PERIOD=25` s, `F8_HEIGHT=0.8` m) → return hover → land |
+| Controller | `MPC_CTRL_METHOD=1`, `BPP_KS_XY=1.70`, `BPP_KS_Z=2.00`, `MPC_THR_HOVER=0.21` |
+| Log length | Flight A 83.565 s; Flight B 82.843 s; same `sys_uuid` |
+
+Logged names `BPP_*` and topic `bppsmc_debug` are unchanged. Recompute Flight A with `scripts/analyze_sample.py --verify`. One completed flight is not a statistical ranking and not an independent position truth.
+
 ## Figures
 
 Time is seconds from liftoff. Each trace runs through touchdown, including takeoff, hover, the figure-eight, the return, and the descent. Position error is the estimator position minus the reference. The vertical panel shows Flight A's logged corridor \(\rho_c\pm b\); the planar panels omit it so the half-width does not hide the traces. Short ticks, if present, are corridor-center resets. Dotted lines on the acceleration figure are the logged command limits. The horizontal path uses the same liftoff-to-touchdown interval. Each flight is shifted so its reference at liftoff is the origin.
@@ -45,6 +59,7 @@ Time is seconds from liftoff. Each trace runs through touchdown, including takeo
 | Figures | [figs/](figs/) |
 | Offline recompute | `scripts/analyze_sample.py --verify` |
 | Aircraft setup | [docs/REAL_AIRCRAFT.md](docs/REAL_AIRCRAFT.md) |
+| Real-flight setup and parameter table | [docs/REAL_FLIGHT.md](docs/REAL_FLIGHT.md) |
 
 The logged parameter names `BPP_*` and the topic `bppsmc_debug` are the names stored in the ULogs. They are kept so the offline check still matches the records.
 
@@ -133,6 +148,7 @@ The files in `artifacts/` were rebuilt from this frozen tree. They are not prove
 
 - [docs/ALGORITHM.md](docs/ALGORITHM.md)
 - [docs/REAL_AIRCRAFT.md](docs/REAL_AIRCRAFT.md)
+- [docs/REAL_FLIGHT.md](docs/REAL_FLIGHT.md)
 - [data/REPORT.md](data/REPORT.md)
 - [VALIDATION.md](VALIDATION.md)
 - [CHANGELOG.md](CHANGELOG.md)

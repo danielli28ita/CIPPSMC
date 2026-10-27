@@ -37,6 +37,10 @@ Board id 56. Flash use 1,900,252 / 1,966,080 bytes (about 96.65%). The image inc
 
 Flight A records a completed real task. This rebuild did not connect to or flash a flight controller. The rebuilt firmware is not proven byte-identical to the historical flight binary, and this round does not claim a new flight test.
 
+## Documentation check (2026-10-27)
+
+- Added `docs/REAL_FLIGHT.md` from Flight A/B ULog headers, `params/flight_profile.params` (36 keys), and `params/all_parameters.json`. No `data/*.ulg` bytes changed; `reports/` was not overwritten. `python3 scripts/verify_package.py` passed after the manifest update.
+
 ## Not covered
 
 - A new hardware flash, physical HITL, or another flight with different propulsion, battery, or payload.
