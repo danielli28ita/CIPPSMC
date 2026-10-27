@@ -1,0 +1,5 @@
+menuconfig MODULES_FIGURE8_TRAJECTORY
+	bool "figure8_trajectory"
+	default n
+	---help---
+		Onboard OFFBOARD takeoff, figure-eight and landing for PID/BPPSMC comparison.

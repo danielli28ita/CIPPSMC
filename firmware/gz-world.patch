@@ -1,0 +1,22 @@
+diff --git a/worlds/default.sdf b/worlds/default.sdf
+index 7484151..6ff3b42 100644
+--- a/worlds/default.sdf
++++ b/worlds/default.sdf
+@@ -15,7 +15,7 @@
+     <plugin name="gz::sim::systems::ApplyLinkWrench" filename="gz-sim-apply-link-wrench-system"/>
+     <plugin name="gz::sim::systems::NavSat" filename="gz-sim-navsat-system"/>
+     <plugin name="gz::sim::systems::Sensors" filename="gz-sim-sensors-system">
+-      <render_engine>ogre2</render_engine>
++      <render_engine>ogre</render_engine>
+     </plugin>
+     <gui fullscreen="false">
+       <!-- 3D scene -->
+@@ -25,7 +25,7 @@
+           <property type="bool" key="showTitleBar">false</property>
+           <property type="string" key="state">docked</property>
+         </gz-gui>
+-        <engine>ogre2</engine>
++        <engine>ogre</engine>
+         <scene>scene</scene>
+         <ambient_light>0.4 0.4 0.4</ambient_light>
+         <background_color>0.8 0.8 0.8</background_color>

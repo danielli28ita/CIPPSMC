@@ -1,0 +1,16 @@
+{
+  "duration_s": 83.565173,
+  "figure8_3d_rmse_m": 0.10262372055378105,
+  "figure8_3d_max_m": 0.13943065021546366,
+  "figure8_horizontal_rmse_m": 0.09590732297418182,
+  "figure8_x_bias_m": -0.0792654937340343,
+  "figure8_y_bias_m": -0.024415760291147268,
+  "figure8_z_bias_m": -0.032455922126770016,
+  "figure8_x_rmse_m": 0.08808574147695575,
+  "figure8_y_rmse_m": 0.037935692276916996,
+  "figure8_z_rmse_m": 0.03651593378549315,
+  "lap_1_3d_rmse_m": 0.10224470574519524,
+  "lap_2_3d_rmse_m": 0.10300134070816519,
+  "event_count": 0,
+  "dropout_records": 0
+}

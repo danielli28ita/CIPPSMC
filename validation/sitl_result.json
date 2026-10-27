@@ -1,0 +1,28 @@
+{
+  "passed_lifecycle_and_profile": true,
+  "parameter_mismatches": {},
+  "parameter_values_from_compiled_defaults_if_missing_in_ulog": [
+    "F8_ERR_MAX",
+    "F8_HOV_TIME",
+    "F8_LND_DEPTH",
+    "F8_LND_TIME",
+    "F8_TKO_TIME"
+  ],
+  "sim_hover_parameter": 0.7300000190734863,
+  "sim_airframe": 4001,
+  "sim_ev_ctrl": 0,
+  "sim_gps_ctrl": 7,
+  "figure8_error_rmse_m": 0.05982866883277893,
+  "figure8_error_max_m": 0.13236074149608612,
+  "laps": [
+    1,
+    2
+  ],
+  "bppsmc_debug_samples": 9901,
+  "tracking_precision_criteria": {
+    "figure8_rmse_m_below": 0.15,
+    "figure8_max_m_below": 0.3
+  },
+  "tracking_precision_acceptance_test_passed": true,
+  "note": "Simulation engineering checks with explicit X500-only hover mapping; not a claim to reproduce real flight errors. Generated simulator ULog is kept in workspace, not bundled as another sample."
+}

@@ -1,0 +1,11 @@
+Bernoulli mission: release parity, curve geometry, derivatives, boundaries, full flight, laps, aborts and EKF translation passed
+test_every_overlay_hash (test_release.ReleaseChecks) ... ok
+test_only_requested_sample (test_release.ReleaseChecks) ... ok
+test_parameters_exactly_from_log (test_release.ReleaseChecks) ... ok
+test_sample_completed (test_release.ReleaseChecks) ... ok
+test_task_profile_not_calibration (test_release.ReleaseChecks) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.573s
+
+OK

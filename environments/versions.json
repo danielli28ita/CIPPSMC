@@ -1,0 +1,41 @@
+{
+  "os": {
+    "PRETTY_NAME": "\"Ubuntu 22.04.5 LTS\"",
+    "NAME": "\"Ubuntu\"",
+    "VERSION_ID": "\"22.04\"",
+    "VERSION": "\"22.04.5 LTS (Jammy Jellyfish)\"",
+    "VERSION_CODENAME": "jammy",
+    "ID": "ubuntu",
+    "ID_LIKE": "debian",
+    "HOME_URL": "\"https://www.ubuntu.com/\"",
+    "SUPPORT_URL": "\"https://help.ubuntu.com/\"",
+    "BUG_REPORT_URL": "\"https://bugs.launchpad.net/ubuntu/\"",
+    "PRIVACY_POLICY_URL": "\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"",
+    "UBUNTU_CODENAME": "jammy"
+  },
+  "architecture": "x86_64",
+  "python": "3.10.12",
+  "px4_baseline": "99c40407ffd7ac184e2d7b4b293f36f10fe561ef",
+  "gazebo_major": "Harmonic / gz-sim8",
+  "python_lock": "requirements.lock.txt",
+  "ros_required_for_onboard_trajectory": false,
+  "system_packages": [
+    "build-essential\t12.9ubuntu3",
+    "ccache\t4.5.1-1",
+    "cmake\t3.22.1-1ubuntu1.22.04.2",
+    "g++\t4:11.2.0-1ubuntu1",
+    "gcc\t4:11.2.0-1ubuntu1",
+    "gcc-arm-none-eabi\t15:10.3-2021.07-4",
+    "libgz-sim8\t8.15.0-1~jammy",
+    "libgz-sim8-dev\t8.15.0-1~jammy",
+    "libgz-transport13\t13.6.0-1~jammy",
+    "libgz-transport13-dev\t13.6.0-1~jammy",
+    "ninja-build\t1.10.1-1"
+  ],
+  "network_bootstrap_requires": [
+    "Ubuntu package repositories",
+    "PyPI",
+    "GitHub PX4 and dependency repositories",
+    "OSRF repository if installing Gazebo"
+  ]
+}

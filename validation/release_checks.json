@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-26",
+  "independent_archive_extraction": true,
+  "fresh_python_venv_created": true,
+  "integrity_check_passed": true,
+  "offline_cpp_and_five_python_tests_passed": true,
+  "all_14_sample_metrics_passed": true,
+  "only_one_requested_ulog_in_archive": true,
+  "no_workspace_build_cache_or_reports_in_archive": true,
+  "broken_documentation_links": 0,
+  "tested_archive_sha256": "5c55cb39f2c22b32a02927ccc1819647f2b37a9f9445e106886c3f7fbee8fcf6",
+  "note": "This record is added after testing the candidate archive; final archive integrity is rechecked separately. System g++ and OS libraries are the existing host installation, not a fresh OS."
+}

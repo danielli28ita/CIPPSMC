@@ -1,0 +1,2 @@
+# Inherits fmu-v6c/default.px4board; external HITL requires simulated outputs.
+CONFIG_MODULES_SIMULATION_PWM_OUT_SIM=y

@@ -1,0 +1,2767 @@
+diff --git a/ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500 b/ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500
+index bb6bedd..5c1a4ee 100644
+--- a/ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500
++++ b/ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500
+@@ -12,11 +12,24 @@ PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
+ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500}
+ 
+ param set-default SIM_GZ_EN 1
++param set-default MPC_CTRL_METHOD 1
+ 
+-param set-default SENS_EN_GPSSIM 1
++# The Gazebo bridge publishes the native NavSat sensor directly to sensor_gps.
++param set-default SENS_EN_GPSSIM 0
++# Use GPS and the simulated magnetometer; do not fuse visual odometry.
++param set-default EKF2_EV_CTRL 0
++# Gazebo x500 already publishes its native air-pressure sensor.
+ param set-default SENS_EN_BAROSIM 0
+ param set-default SENS_EN_MAGSIM 1
+ 
++# Height estimate: use barometer as the non-drifting height reference (gz baro is
++# near-zero-mean vs GPS vertical which carries a large run-to-run init bias).
++param set-default EKF2_BARO_CTRL 1
++param set-default EKF2_HGT_REF 0
++# Gazebo's pressure signal closely follows model height; the generic 3.5 m
++# default makes EKF height fusion too weak for closed-loop position tracking.
++param set-default EKF2_BARO_NOISE 0.3
++
+ param set-default CA_AIRFRAME 0
+ param set-default CA_ROTOR_COUNT 4
+ 
+diff --git a/ROMFS/px4fmu_common/init.d/rc.mc_apps b/ROMFS/px4fmu_common/init.d/rc.mc_apps
+index d5d9989..3808231 100644
+--- a/ROMFS/px4fmu_common/init.d/rc.mc_apps
++++ b/ROMFS/px4fmu_common/init.d/rc.mc_apps
+@@ -36,3 +36,8 @@ mc_pos_control start
+ # Start Multicopter Land Detector.
+ #
+ land_detector start multicopter
++
++if param greater -s F8_ENABLE 0
++then
++	figure8_trajectory start
++fi
+diff --git a/boards/px4/sitl/default.px4board b/boards/px4/sitl/default.px4board
+index 7dd7ce4..dd3f403 100644
+--- a/boards/px4/sitl/default.px4board
++++ b/boards/px4/sitl/default.px4board
+@@ -18,6 +18,7 @@ CONFIG_EKF2_VERBOSE_STATUS=y
+ CONFIG_EKF2_AUX_GLOBAL_POSITION=y
+ CONFIG_MODULES_EVENTS=y
+ CONFIG_MODULES_FLIGHT_MODE_MANAGER=y
++CONFIG_MODULES_FIGURE8_TRAJECTORY=y
+ CONFIG_MODULES_FW_ATT_CONTROL=y
+ CONFIG_MODULES_FW_AUTOTUNE_ATTITUDE_CONTROL=y
+ CONFIG_MODULES_FW_POS_CONTROL=y
+diff --git a/msg/CMakeLists.txt b/msg/CMakeLists.txt
+index c53402b..42a6c09 100644
+--- a/msg/CMakeLists.txt
++++ b/msg/CMakeLists.txt
+@@ -38,6 +38,7 @@ include(px4_list_make_absolute)
+ 
+ set(msg_files
+ 	ActionRequest.msg
++	BppsmcDebug.msg
+ 	ActuatorArmed.msg
+ 	ActuatorControlsStatus.msg
+ 	ActuatorMotors.msg
+@@ -94,6 +95,7 @@ set(msg_files
+ 	FigureEightStatus.msg
+ 	FailsafeFlags.msg
+ 	FailureDetectorStatus.msg
++	Figure8Status.msg
+ 	FlightPhaseEstimation.msg
+ 	FollowTarget.msg
+ 	FollowTargetEstimator.msg
+diff --git a/src/modules/logger/logged_topics.cpp b/src/modules/logger/logged_topics.cpp
+index 731f087..2a79739 100644
+--- a/src/modules/logger/logged_topics.cpp
++++ b/src/modules/logger/logged_topics.cpp
+@@ -66,6 +66,7 @@ void LoggedTopics::add_default_topics()
+ 	add_optional_topic("esc_status", 250);
+ 	add_topic("failure_detector_status", 100);
+ 	add_topic("failsafe_flags");
++	add_topic("figure8_status", 50);
+ 	add_optional_topic("follow_target", 500);
+ 	add_optional_topic("follow_target_estimator", 200);
+ 	add_optional_topic("follow_target_status", 400);
+@@ -131,6 +132,7 @@ void LoggedTopics::add_default_topics()
+ 	add_topic("vehicle_land_detected");
+ 	add_topic("vehicle_local_position", 100);
+ 	add_topic("vehicle_local_position_setpoint", 100);
++	add_topic("bppsmc_debug", 4); // [BPPSMC] 250Hz holographic debug log
+ 	add_topic("vehicle_magnetometer", 200);
+ 	add_topic("vehicle_rates_setpoint", 20);
+ 	add_topic("vehicle_roi", 1000);
+diff --git a/src/modules/mc_pos_control/MulticopterPositionControl.cpp b/src/modules/mc_pos_control/MulticopterPositionControl.cpp
+index 9092892..97ed82a 100644
+--- a/src/modules/mc_pos_control/MulticopterPositionControl.cpp
++++ b/src/modules/mc_pos_control/MulticopterPositionControl.cpp
+@@ -70,9 +70,25 @@ bool MulticopterPositionControl::init()
+ 	_time_stamp_last_loop = hrt_absolute_time();
+ 	ScheduleNow();
+ 
++	apply_bppsmc_parameters();
++
+ 	return true;
+ }
+ 
++int MulticopterPositionControl::print_status()
++{
++	PX4_INFO("Position controller: %s", _bppsmc_selected ? "ET-BPPSMC" : "Native PX4 PID");
++	PX4_INFO("Requested MPC_CTRL_METHOD: %ld, parameter update pending: %s",
++		 (long)_param_mpc_ctrl_method.get(), _bppsmc_parameters_pending ? "yes (apply disarmed)" : "no");
++	if (_onboard_policy_latched) {
++		const bool task_active = _figure8_status.active && _vehicle_control_mode.flag_control_offboard_enabled
++					&& hrt_absolute_time() - _figure8_status.timestamp < 500_ms;
++		PX4_INFO("Onboard policy: %s", task_active ? "task controller allowed" : "native PID takeover");
++	}
++	perf_print_counter(_cycle_perf);
++	return 0;
++}
++
+ void MulticopterPositionControl::parameters_update(bool force)
+ {
+ 	// check for parameter updates
+@@ -84,6 +100,11 @@ void MulticopterPositionControl::parameters_update(bool force)
+ 		// update parameters from storage
+ 		ModuleParams::updateParams();
+ 		SuperBlock::updateParams();
++		_bppsmc_parameters_pending = true;
++		int32_t onboard_enabled = 0;
++		if (_f8_enable_handle != PARAM_INVALID && param_get(_f8_enable_handle, &onboard_enabled) == PX4_OK) {
++			_onboard_policy_latched |= onboard_enabled == 1;
++		}
+ 
+ 		int num_changed = 0;
+ 
+@@ -275,6 +296,41 @@ void MulticopterPositionControl::parameters_update(bool force)
+ 	}
+ }
+ 
++void MulticopterPositionControl::apply_bppsmc_parameters()
++{
++	if (!_bppsmc_parameters_pending || _vehicle_control_mode.flag_armed) {
++		return;
++	}
++
++	BppsmcParameters parameters{};
++	parameters.ppf_acceleration = Vector3f(_param_bpp_amax_xy.get(), _param_bpp_amax_xy.get(), _param_bpp_amax_z.get());
++	parameters.funnel_width = Vector3f(_param_bpp_band_xy.get(), _param_bpp_band_xy.get(), _param_bpp_band_z.get());
++	parameters.trigger_fraction = Vector3f(_param_bpp_trig_xy.get(), _param_bpp_trig_xy.get(), _param_bpp_trig_z.get());
++	parameters.surface_gain = Vector3f(_param_bpp_ks_xy.get(), _param_bpp_ks_xy.get(), _param_bpp_ks_z.get());
++	parameters.reaching_gain = Vector3f(_param_bpp_k0_xy.get(), _param_bpp_k0_xy.get(), _param_bpp_k0_z.get());
++	parameters.switching_gain = Vector3f(_param_bpp_k1_xy.get(), _param_bpp_k1_xy.get(), _param_bpp_k1_z.get());
++	parameters.boundary_layer = Vector3f(_param_bpp_phi_xy.get(), _param_bpp_phi_xy.get(), _param_bpp_phi_z.get());
++	parameters.acceleration_limit = Vector3f(_param_bpp_acc_xy.get(), _param_bpp_acc_xy.get(), _param_bpp_acc_z.get());
++	parameters.funnel_fraction = _param_bpp_delta.get();
++	parameters.reaching_time = _param_bpp_t_pre.get();
++	parameters.reaching_tolerance = _param_bpp_eps_pre.get();
++	parameters.sliding_time = _param_bpp_t_slide.get();
++	parameters.sliding_tolerance = _param_bpp_eps_slide.get();
++	parameters.minimum_error = _param_bpp_e0_min.get();
++	parameters.authority_threshold = _param_bpp_acc_floor.get();
++	parameters.rampup_trigger = _param_bpp_trig_ramp.get();
++	_control.setBppsmcParameters(parameters);
++	const bool selected = _param_mpc_ctrl_method.get() == 1;
++
++	if (selected != _bppsmc_selected) {
++		_control.resetIntegral();
++	}
++
++	_bppsmc_selected = selected;
++	_control.setBppsmcEnabled(false);
++	_bppsmc_parameters_pending = false;
++}
++
+ PositionControlStates MulticopterPositionControl::set_vehicle_states(const vehicle_local_position_s
+ 		&vehicle_local_position)
+ {
+@@ -369,6 +425,9 @@ void MulticopterPositionControl::Run()
+ 		}
+ 
+ 		_vehicle_land_detected_sub.update(&_vehicle_land_detected);
++		_figure8_status_sub.update(&_figure8_status);
++		_onboard_policy_latched |= _figure8_status.enabled;
++		apply_bppsmc_parameters();
+ 
+ 		if (_param_mpc_use_hte.get()) {
+ 			hover_thrust_estimate_s hte;
+@@ -449,9 +508,22 @@ void MulticopterPositionControl::Run()
+ 						    _vehicle_constraints.want_takeoff,
+ 						    _vehicle_constraints.speed_up, skip_takeoff, vehicle_local_position.timestamp_sample);
+ 
+-			const bool not_taken_off             = (_takeoff.getTakeoffState() < TakeoffState::rampup);
+ 			const bool flying                    = (_takeoff.getTakeoffState() >= TakeoffState::flight);
+ 			const bool flying_but_ground_contact = (flying && _vehicle_land_detected.ground_contact);
++			const bool offboard_mission          = _vehicle_control_mode.flag_control_offboard_enabled;
++			const TakeoffState takeoff_state     = _takeoff.getTakeoffState();
++			const bool offboard_climb_cmd          = offboard_mission && _vehicle_control_mode.flag_armed
++					&& ((PX4_ISFINITE(_setpoint.position[2]) && _setpoint.position[2] < states.position(2) - 0.1f)
++					    || (PX4_ISFINITE(_setpoint.velocity[2]) && _setpoint.velocity[2] < 0.f)
++					    || (PX4_ISFINITE(_setpoint.acceleration[2]) && _setpoint.acceleration[2] < 0.f));
++
++			if (_vehicle_control_mode.flag_armed && !_prev_armed) {
++				_control.setBppsmcArmReferenceUs(hrt_absolute_time());
++			}
++
++			_prev_armed = _vehicle_control_mode.flag_armed;
++
++			const bool takeoff_ge_rampup = (takeoff_state >= TakeoffState::rampup);
+ 
+ 			if (!flying) {
+ 				_control.setHoverThrust(_param_mpc_thr_hover.get());
+@@ -462,16 +534,28 @@ void MulticopterPositionControl::Run()
+ 				_setpoint.acceleration[2] = NAN;
+ 			}
+ 
+-			if (not_taken_off || flying_but_ground_contact) {
+-				// we are not flying yet and need to avoid any corrections
++			const bool inject_ground_hold = ((takeoff_state < TakeoffState::rampup)
++							 && !(_bppsmc_selected && offboard_climb_cmd))
++							|| flying_but_ground_contact;
++
++			if (inject_ground_hold) {
++				// Preserve zero thrust on the ground unless a real climb is commanded.
+ 				_setpoint = PositionControl::empty_trajectory_setpoint;
+ 				_setpoint.timestamp = vehicle_local_position.timestamp_sample;
+ 				Vector3f(0.f, 0.f, 100.f).copyTo(_setpoint.acceleration); // High downwards acceleration to make sure there's no thrust
+ 
+ 				// prevent any integrator windup
+ 				_control.resetIntegral();
++				_control.resetBppsmcState();
+ 			}
+ 
++			const bool onboard_bppsmc_allowed = !_onboard_policy_latched
++					|| (_vehicle_control_mode.flag_control_offboard_enabled && _figure8_status.active
++					    && hrt_absolute_time() - _figure8_status.timestamp < 500_ms);
++			_control.setBppsmcEnabled(_bppsmc_selected && onboard_bppsmc_allowed && _vehicle_control_mode.flag_armed && !inject_ground_hold
++						  && (takeoff_ge_rampup || offboard_climb_cmd));
++			_control.setBppsmcRampupActive(takeoff_state < TakeoffState::flight);
++
+ 			// limit tilt during takeoff ramupup
+ 			const float tilt_limit_deg = (_takeoff.getTakeoffState() < TakeoffState::flight)
+ 						     ? _param_mpc_tiltmax_lnd.get() : _param_mpc_tiltmax_air.get();
+diff --git a/src/modules/mc_pos_control/MulticopterPositionControl.hpp b/src/modules/mc_pos_control/MulticopterPositionControl.hpp
+index 3dac59b..68748ce 100644
+--- a/src/modules/mc_pos_control/MulticopterPositionControl.hpp
++++ b/src/modules/mc_pos_control/MulticopterPositionControl.hpp
+@@ -57,6 +57,7 @@
+ #include <uORB/Subscription.hpp>
+ #include <uORB/SubscriptionCallback.hpp>
+ #include <uORB/topics/hover_thrust_estimate.h>
++#include <uORB/topics/figure8_status.h>
+ #include <uORB/topics/parameter_update.h>
+ #include <uORB/topics/trajectory_setpoint.h>
+ #include <uORB/topics/vehicle_attitude_setpoint.h>
+@@ -85,6 +86,7 @@ public:
+ 	static int print_usage(const char *reason = nullptr);
+ 
+ 	bool init();
++	int print_status() override;
+ 
+ private:
+ 	void Run() override;
+@@ -102,6 +104,7 @@ private:
+ 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+ 
+ 	uORB::Subscription _hover_thrust_estimate_sub{ORB_ID(hover_thrust_estimate)};
++	uORB::Subscription _figure8_status_sub{ORB_ID(figure8_status)};
+ 	uORB::Subscription _trajectory_setpoint_sub{ORB_ID(trajectory_setpoint)};
+ 	uORB::Subscription _vehicle_constraints_sub{ORB_ID(vehicle_constraints)};
+ 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
+@@ -112,6 +115,7 @@ private:
+ 
+ 	trajectory_setpoint_s _setpoint{PositionControl::empty_trajectory_setpoint};
+ 	vehicle_control_mode_s _vehicle_control_mode{};
++	figure8_status_s _figure8_status{};
+ 
+ 	vehicle_constraints_s _vehicle_constraints {
+ 		.timestamp = 0,
+@@ -129,6 +133,32 @@ private:
+ 	};
+ 
+ 	DEFINE_PARAMETERS(
++		(ParamInt<px4::params::MPC_CTRL_METHOD>) _param_mpc_ctrl_method,
++		(ParamFloat<px4::params::BPP_AMAX_XY>) _param_bpp_amax_xy,
++		(ParamFloat<px4::params::BPP_AMAX_Z>) _param_bpp_amax_z,
++		(ParamFloat<px4::params::BPP_BAND_XY>) _param_bpp_band_xy,
++		(ParamFloat<px4::params::BPP_BAND_Z>) _param_bpp_band_z,
++		(ParamFloat<px4::params::BPP_DELTA>) _param_bpp_delta,
++		(ParamFloat<px4::params::BPP_TRIG_XY>) _param_bpp_trig_xy,
++		(ParamFloat<px4::params::BPP_TRIG_Z>) _param_bpp_trig_z,
++		(ParamFloat<px4::params::BPP_KS_XY>) _param_bpp_ks_xy,
++		(ParamFloat<px4::params::BPP_KS_Z>) _param_bpp_ks_z,
++		(ParamFloat<px4::params::BPP_K0_XY>) _param_bpp_k0_xy,
++		(ParamFloat<px4::params::BPP_K0_Z>) _param_bpp_k0_z,
++		(ParamFloat<px4::params::BPP_K1_XY>) _param_bpp_k1_xy,
++		(ParamFloat<px4::params::BPP_K1_Z>) _param_bpp_k1_z,
++		(ParamFloat<px4::params::BPP_PHI_XY>) _param_bpp_phi_xy,
++		(ParamFloat<px4::params::BPP_PHI_Z>) _param_bpp_phi_z,
++		(ParamFloat<px4::params::BPP_T_PRE>) _param_bpp_t_pre,
++		(ParamFloat<px4::params::BPP_EPS_PRE>) _param_bpp_eps_pre,
++		(ParamFloat<px4::params::BPP_T_SLIDE>) _param_bpp_t_slide,
++		(ParamFloat<px4::params::BPP_EPS_SLIDE>) _param_bpp_eps_slide,
++		(ParamFloat<px4::params::BPP_E0_MIN>) _param_bpp_e0_min,
++		(ParamFloat<px4::params::BPP_ACC_FLOOR>) _param_bpp_acc_floor,
++		(ParamFloat<px4::params::BPP_TRIG_RAMP>) _param_bpp_trig_ramp,
++		(ParamFloat<px4::params::BPP_ACC_XY>) _param_bpp_acc_xy,
++		(ParamFloat<px4::params::BPP_ACC_Z>) _param_bpp_acc_z,
++
+ 		// Position Control
+ 		(ParamFloat<px4::params::MPC_XY_P>)         _param_mpc_xy_p,
+ 		(ParamFloat<px4::params::MPC_Z_P>)          _param_mpc_z_p,
+@@ -206,6 +236,12 @@ private:
+ 
+ 	SlewRate<float> _tilt_limit_slew_rate;
+ 
++	bool _prev_armed{false};
++	bool _bppsmc_selected{false};
++	bool _bppsmc_parameters_pending{true};
++	bool _onboard_policy_latched{false};
++	const param_t _f8_enable_handle{param_find("F8_ENABLE")};
++
+ 	uint8_t _vxy_reset_counter{0};
+ 	uint8_t _vz_reset_counter{0};
+ 	uint8_t _xy_reset_counter{0};
+@@ -220,6 +256,7 @@ private:
+ 	 * @param force forces parameter update.
+ 	 */
+ 	void parameters_update(bool force);
++	void apply_bppsmc_parameters();
+ 
+ 	/**
+ 	 * Check for validity of positon/velocity states.
+diff --git a/src/modules/mc_pos_control/PositionControl/CMakeLists.txt b/src/modules/mc_pos_control/PositionControl/CMakeLists.txt
+index 8136317..da0902f 100644
+--- a/src/modules/mc_pos_control/PositionControl/CMakeLists.txt
++++ b/src/modules/mc_pos_control/PositionControl/CMakeLists.txt
+@@ -40,4 +40,4 @@ px4_add_library(PositionControl
+ target_include_directories(PositionControl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+ 
+ px4_add_unit_gtest(SRC ControlMathTest.cpp LINKLIBS PositionControl)
+-px4_add_unit_gtest(SRC PositionControlTest.cpp LINKLIBS PositionControl)
++px4_add_unit_gtest(SRC PositionControlTest.cpp LINKLIBS PositionControl px4_layer px4_platform uORB systemlib cdev px4_work_queue px4_daemon work_queue parameters events perf tinybson uorb_msgs test_stubs)
+diff --git a/src/modules/mc_pos_control/PositionControl/PositionControl.cpp b/src/modules/mc_pos_control/PositionControl/PositionControl.cpp
+index 0cf632c..f2681a8 100644
+--- a/src/modules/mc_pos_control/PositionControl/PositionControl.cpp
++++ b/src/modules/mc_pos_control/PositionControl/PositionControl.cpp
+@@ -40,6 +40,7 @@
+ #include <float.h>
+ #include <mathlib/mathlib.h>
+ #include <px4_platform_common/defines.h>
++#include <px4_platform_common/time.h>
+ #include <geo/geo.h>
+ 
+ using namespace matrix;
+@@ -72,6 +73,15 @@ void PositionControl::setHorizontalThrustMargin(const float margin)
+ 	_lim_thr_xy_margin = margin;
+ }
+ 
++// BASELINE_CONTROLLER: 0 = ET-BPPSMC (proposed), 1 = ET-ADRC (Xu et al., AMC 449:127967, 2023),
++// 2 = FxT-OF (Shao, Tian & Yang, ISA Trans. 110:213-224, 2021),
++// 3 = ET-IMR (Zhao et al., IJRNC 35:4669-4685, 2025; internal-model output regulator).
++// Patched by flights/baselines/apply_baseline_variant.py; all variants share setpoint capture,
++// ready gating, acceleration limits and the hover-thrust mapping - only the acc_sp law differs.
++#ifndef BASELINE_CONTROLLER
++#define BASELINE_CONTROLLER 0
++#endif
++
+ void PositionControl::updateHoverThrust(const float hover_thrust_new)
+ {
+ 	// Given that the equation for thrust is T = a_sp * Th / g - Th
+@@ -105,14 +115,727 @@ void PositionControl::setInputSetpoint(const trajectory_setpoint_s &setpoint)
+ 	_yawspeed_sp = setpoint.yawspeed;
+ }
+ 
++void PositionControl::_capturePureSetpoints()
++{
++	// PX4 pre-takeoff / ground-hold uses acc_z = 100 m/s^2 as a downward sentinel — never
++	// treat it as trajectory feedforward (would saturate BPPSMC z output at +10 and kill thrust).
++	static constexpr float ACC_FF_ABS_MAX = 15.f;
++
++	for (int i = 0; i < 3; i++) {
++		if (PX4_ISFINITE(_pos_sp(i))) {
++			_pd_pure(i) = _pos_sp(i);
++
++		} else if (!PX4_ISFINITE(_pd_pure(i))) {
++			_pd_pure(i) = PX4_ISFINITE(_pos(i)) ? _pos(i) : 0.f;
++		}
++
++		if (PX4_ISFINITE(_vel_sp(i))) {
++			_vd_pure(i) = _vel_sp(i);
++
++		} else if (!PX4_ISFINITE(_vd_pure(i))) {
++			_vd_pure(i) = 0.f;
++		}
++
++		if (PX4_ISFINITE(_acc_sp(i)) && fabsf(_acc_sp(i)) <= ACC_FF_ABS_MAX) {
++			_ad_pure(i) = _acc_sp(i);
++
++		} else {
++			_ad_pure(i) = 0.f;
++		}
++	}
++}
++
++void PositionControl::_resetBppsmcEtState()
++{
++	for (int i = 0; i < 3; i++) {
++		_et_init[i] = false;
++		_ppf_hold_zero[i] = false;
++		_dir[i] = 0.f;
++		_e0[i] = 0.f;
++		_t0[i] = 0;
++		_trigger_count[i] = 0;
++		_trigger_armed[i] = true;
++	}
++	_z_rampup_first_trigger_done = false;
++}
++
++void PositionControl::_resetBppsmcPureSetpoints()
++{
++	_pd_pure.setNaN();
++	_vd_pure.setNaN();
++	_ad_pure.setNaN();
++}
++
++void PositionControl::resetBppsmcState()
++{
++	_resetBppsmcEtState();
++	_resetBaselineState();
++	_resetBppsmcPureSetpoints();
++	_bppsmc_was_ready = false;
++	_pd_pure_prev.setNaN();
++}
++
++void PositionControl::setBppsmcParameters(const BppsmcParameters &parameters)
++{
++	const BppsmcParameters defaults{};
++	_bppsmc_parameters = parameters;
++	auto constrain_parameter = [](float value, float fallback, float minimum, float maximum) {
++		return PX4_ISFINITE(value) ? math::constrain(value, minimum, maximum) : fallback;
++	};
++
++	for (int i = 0; i < 3; i++) {
++		_bppsmc_parameters.ppf_acceleration(i) = constrain_parameter(parameters.ppf_acceleration(i), defaults.ppf_acceleration(i), 0.05f, 5.f);
++		_bppsmc_parameters.funnel_width(i) = constrain_parameter(parameters.funnel_width(i), defaults.funnel_width(i), 0.05f, 10.f);
++		_bppsmc_parameters.trigger_fraction(i) = constrain_parameter(parameters.trigger_fraction(i), defaults.trigger_fraction(i), 0.05f, 0.99f);
++		_bppsmc_parameters.surface_gain(i) = constrain_parameter(parameters.surface_gain(i), defaults.surface_gain(i), 0.05f, 10.f);
++		_bppsmc_parameters.reaching_gain(i) = constrain_parameter(parameters.reaching_gain(i), defaults.reaching_gain(i), 0.05f, 10.f);
++		_bppsmc_parameters.switching_gain(i) = constrain_parameter(parameters.switching_gain(i), defaults.switching_gain(i), 0.f, 5.f);
++		_bppsmc_parameters.boundary_layer(i) = constrain_parameter(parameters.boundary_layer(i), defaults.boundary_layer(i), 0.05f, 10.f);
++		_bppsmc_parameters.acceleration_limit(i) = constrain_parameter(parameters.acceleration_limit(i), defaults.acceleration_limit(i), 0.1f, 15.f);
++	}
++
++	_bppsmc_parameters.funnel_fraction = constrain_parameter(parameters.funnel_fraction, defaults.funnel_fraction, 0.01f, 1.f);
++	_bppsmc_parameters.reaching_time = constrain_parameter(parameters.reaching_time, defaults.reaching_time, 0.1f, 20.f);
++	_bppsmc_parameters.reaching_tolerance = constrain_parameter(parameters.reaching_tolerance, defaults.reaching_tolerance, 0.001f, 1.f);
++	_bppsmc_parameters.sliding_time = constrain_parameter(parameters.sliding_time, defaults.sliding_time, 0.1f, 20.f);
++	_bppsmc_parameters.sliding_tolerance = constrain_parameter(parameters.sliding_tolerance, defaults.sliding_tolerance, 0.001f, 1.f);
++	_bppsmc_parameters.minimum_error = constrain_parameter(parameters.minimum_error, defaults.minimum_error, 0.001f, 1.f);
++	_bppsmc_parameters.authority_threshold = constrain_parameter(parameters.authority_threshold, defaults.authority_threshold, 0.001f, 1.f);
++	_bppsmc_parameters.rampup_trigger = constrain_parameter(parameters.rampup_trigger, defaults.rampup_trigger, 0.05f, 0.99f);
++	_bppsmc_acc_max = _bppsmc_parameters.acceleration_limit;
++	resetBppsmcState();
++}
++
++bool PositionControl::_bppsmcAxisReady(int axis) const
++{
++	return PX4_ISFINITE(_pos(axis)) && PX4_ISFINITE(_vel(axis)) && PX4_ISFINITE(_vel_dot(axis))
++	       && (PX4_ISFINITE(_pos_sp(axis)) || PX4_ISFINITE(_vel_sp(axis)));
++}
++
++bool PositionControl::_bppsmcAxisActive(int axis) const
++{
++	static constexpr float VEL_EPS = 0.05f;
++
++	if (!_bppsmcAxisReady(axis)) {
++		return false;
++	}
++
++	if (PX4_ISFINITE(_pos_sp(axis))) {
++		return true;
++	}
++
++	return PX4_ISFINITE(_vd_pure(axis)) && (fabsf(_vd_pure(axis)) > VEL_EPS);
++}
++
++bool PositionControl::_bppsmcReady() const
++{
++	if (!_bppsmc_enabled) {
++		return false;
++	}
++
++	for (int i = 0; i < 3; i++) {
++		if (_bppsmcAxisActive(i)) {
++			return true;
++		}
++	}
++
++	return false;
++}
++
++void PositionControl::_applyBppsmcOverride(const Vector3f &acc_sp_pid)
++{
++	const uint64_t now_us = hrt_absolute_time();
++	const Vector3f e1 = _pos - _pd_pure;
++	const Vector3f e2 = _vel - _vd_pure;
++	Vector3f acc_sp_bppsmc{};
++
++	bppsmc_debug_s debug_msg{};
++	debug_msg.timestamp = now_us;
++
++	// ET-BPPSMC parameters (aligned with the paper's controller definition).
++	//  - PPF: Brachistochrone cos², T_s = pi*sqrt(e0/(2*a_max))
++	//  - Surface: S = eps_dot + lambda_i(tau_s)*eps, lambda = k_s + eta(tau_s)
++	//  - Reaching: kappa = k0 + gamma(tau), gamma = tau/(eps_tol*T_preset^2 + tau^2)
++	//  - Switching: k1*tanh(S/phi) (tex Remark: practical boundary-layer form)
++	const Vector3f &a_max = _bppsmc_parameters.ppf_acceleration;
++	// Funnel half-width band = max(delta_e0_frac*e0, delta_abs). The delta_e0_frac*e0 term is the
++	// paper's Delta_rho = 2*delta*|e1(0)|; delta_abs is an absolute floor so the barrier never
++	// collapses below the residual figure-8 tracking error (regulation funnel -> tracking funnel).
++	const float delta_e0_frac = _bppsmc_parameters.funnel_fraction;
++	const Vector3f &delta_abs = _bppsmc_parameters.funnel_width;
++	// Event fires when |e1-rho| > trig_frac*band (a fraction of the funnel BOUNDARY = band).
++	// NOTE: tested trig_frac=0.95 ("fire only at the boundary") and it BACKFIRED — delaying the
++	// funnel re-centering lets the figure-8 error drift off the stale center, so tracking got
++	// worse (rms_xy 0.18 -> 0.68) AND triggers increased. 0.76/0.90 keeps the funnel centered on
++	// the moving target (tight tracking) while still firing near the boundary. 3 channels independent.
++	const Vector3f &trig_frac = _bppsmc_parameters.trigger_fraction;
++	const Vector3f &k_s = _bppsmc_parameters.surface_gain;
++	const Vector3f &k_0 = _bppsmc_parameters.reaching_gain;
++	const Vector3f &k_1 = _bppsmc_parameters.switching_gain;
++	const Vector3f &phi_param = _bppsmc_parameters.boundary_layer;
++	const float T_preset = _bppsmc_parameters.reaching_time;
++	const float epsilon_tol = _bppsmc_parameters.reaching_tolerance;
++	const float T_slide = _bppsmc_parameters.sliding_time;
++	const float epsilon_s = _bppsmc_parameters.sliding_tolerance;
++	const float E0_min = _bppsmc_parameters.minimum_error;
++	const float acc_floor = _bppsmc_parameters.authority_threshold;
++	const float trig_frac_z_rampup = _bppsmc_parameters.rampup_trigger;
++
++	for (int i = 0; i < 3; i++) {
++		if (!_bppsmcAxisActive(i)) {
++			acc_sp_bppsmc(i) = acc_sp_pid(i);
++			debug_msg.sliding_surface[i] = NAN;
++			debug_msg.rho_center[i] = NAN;
++			debug_msg.acceleration_sp[i] = acc_sp_bppsmc(i);
++			debug_msg.e0[i] = _e0[i];
++			debug_msg.t0[i] = _t0[i];
++			debug_msg.trigger_count[i] = _trigger_count[i];
++			continue;
++		}
++
++		if (!PX4_ISFINITE(e1(i)) || !PX4_ISFINITE(e2(i))) {
++			acc_sp_bppsmc(i) = _ad_pure(i);
++			debug_msg.sliding_surface[i] = NAN;
++			debug_msg.rho_center[i] = NAN;
++			debug_msg.acceleration_sp[i] = acc_sp_bppsmc(i);
++			debug_msg.e0[i] = _e0[i];
++			debug_msg.t0[i] = _t0[i];
++			debug_msg.trigger_count[i] = _trigger_count[i];
++			continue;
++		}
++
++		if (!_et_init[i]) {
++			_et_init[i] = true;
++			_dir[i] = (e1(i) >= 0.f) ? 1.f : -1.f;
++			_e0[i] = fmaxf(fabsf(e1(i)), E0_min);
++			_t0[i] = (_arm_ref_us > 0) ? _arm_ref_us : now_us;
++			_ppf_hold_zero[i] = true;
++		}
++
++		const float tau = (now_us - _t0[i]) * 1e-6f;
++
++		float rho_center = 0.f;
++		float rho_center_dot = 0.f;
++		float rho_center_ddot = 0.f;
++
++		if (!_ppf_hold_zero[i]) {
++			// PPF_ANALYTIC_BEGIN
++		const float Ts = M_PI_F * sqrtf(_e0[i] / (2.f * a_max(i)));
++		float rho_norm = 0.f;
++		float rho_norm_dot = 0.f;
++		float rho_norm_ddot = 0.f;
++
++		if (tau < Ts) {
++			const float phase = M_PI_F * tau / (2.f * Ts);
++			const float c_val = cosf(phase);
++			const float s_val = sinf(phase);
++			rho_norm = c_val * c_val;
++			rho_norm_dot = -(M_PI_F / Ts) * c_val * s_val;
++			rho_norm_ddot = -(M_PI_F * M_PI_F / (2.f * Ts * Ts)) * (c_val * c_val - s_val * s_val);
++		}
++		// PPF_ANALYTIC_END
++
++			rho_center = _dir[i] * _e0[i] * rho_norm;
++			rho_center_dot = _dir[i] * _e0[i] * rho_norm_dot;
++			rho_center_ddot = _dir[i] * _e0[i] * rho_norm_ddot;
++		}
++
++		// Funnel half-width = max(delta*e0, delta_abs); Delta_rho = 2*band. Transform eps = ln(Z/(1-Z)).
++		const float band = fmaxf(delta_e0_frac * _e0[i], delta_abs(i));
++		float Z = (e1(i) - rho_center + band) / (2.f * band);
++		Z = math::constrain(Z, 1e-6f, 1.f - 1e-6f);
++		const float epsilon = logf(Z / (1.f - Z));
++
++		const float Jp = 1.f / (2.f * band * Z * (1.f - Z));
++		const float Z_dot = (e2(i) - rho_center_dot) / (2.f * band);
++		const float Jp_dot = -Jp * Jp * 2.f * band * Z_dot * (1.f - 2.f * Z);
++		const float eps_dot = Jp * (e2(i) - rho_center_dot);
++
++		// Time-varying sliding surface (tex eq:surface, eq:lambda_tv, eq:tau_s)
++		const float tau_s = fmaxf(0.f, tau - T_preset);
++		const float tau_s_active = (tau > T_preset) ? 1.f : 0.f;
++		const float slide_denom = epsilon_s * T_slide * T_slide + tau_s * tau_s;
++		const float eta = (slide_denom > FLT_EPSILON) ? (tau_s / slide_denom) : 0.f;
++		const float lambda_tv = k_s(i) + eta;
++		const float eta_dot = (slide_denom > FLT_EPSILON)
++					? ((epsilon_s * T_slide * T_slide - tau_s * tau_s) / (slide_denom * slide_denom))
++					: 0.f;
++		const float lambda_dot_ts_eps = eta_dot * tau_s_active * epsilon;
++
++		const float S = eps_dot + lambda_tv * epsilon;
++
++		if (!PX4_ISFINITE(S) || !PX4_ISFINITE(Jp) || fabsf(Jp) < FLT_EPSILON) {
++			acc_sp_bppsmc(i) = _ad_pure(i);
++			debug_msg.sliding_surface[i] = NAN;
++			debug_msg.rho_center[i] = rho_center;
++			debug_msg.acceleration_sp[i] = acc_sp_bppsmc(i);
++			debug_msg.e0[i] = _e0[i];
++			debug_msg.t0[i] = _t0[i];
++			debug_msg.trigger_count[i] = _trigger_count[i];
++			continue;
++		}
++
++		const float gamma_denom = epsilon_tol * T_preset * T_preset + tau * tau;
++		const float gamma_t = (gamma_denom > FLT_EPSILON) ? (tau / gamma_denom) : 0.f;
++		const float kappa = gamma_t + k_0(i);
++		const float sat_S = tanhf(S / phi_param(i));
++
++		const float nu_full = Jp_dot * (e2(i) - rho_center_dot) - Jp * rho_center_ddot
++				      + lambda_tv * eps_dot + lambda_dot_ts_eps
++				      + kappa * S + k_1(i) * sat_S;
++
++		float raw_acc = _ad_pure(i) - nu_full / Jp;
++		const float acc_limit = _bppsmc_acc_max(i);
++		acc_sp_bppsmc(i) = math::constrain(raw_acc, -acc_limit, acc_limit);
++
++		if (!PX4_ISFINITE(acc_sp_bppsmc(i))) {
++			acc_sp_bppsmc(i) = 0.f;
++		}
++
++		// --- Event trigger: error leaves the funnel boundary AND a correct control input exists. ---
++		// "Correct control input" = a finite corrective acceleration (raw_acc - a_ff) that opposes the
++		// boundary error, i.e. genuine authority pushing the error back inside the tube. Without it the
++		// event is suppressed, which removes the need for any minimum inter-event time (MIET).
++		const float err_diff = fabsf(e1(i) - rho_center);
++		float trig_frac_eff = trig_frac(i);
++
++		if (_bppsmc_rampup_active && i == 2 && !_z_rampup_first_trigger_done) {
++			trig_frac_eff = trig_frac_z_rampup;
++		}
++
++		const float trig_thresh = trig_frac_eff * band;
++		const float corr_acc = raw_acc - _ad_pure(i);
++		const float err_center = e1(i) - rho_center;
++		const bool ctrl_correct = PX4_ISFINITE(raw_acc)
++					  && (fabsf(corr_acc) > acc_floor)
++					  && (corr_acc * err_center < 0.f);
++
++		// Re-arm only after the error has returned inside the boundary (replaces MIET debounce).
++		if (err_diff <= trig_thresh) {
++			_trigger_armed[i] = true;
++		}
++
++		if (err_diff > trig_thresh && ctrl_correct && _trigger_armed[i]) {
++			_trigger_count[i]++;
++			_t0[i] = now_us;
++			_dir[i] = (e1(i) >= 0.f) ? 1.f : -1.f;
++			_e0[i] = fmaxf(fabsf(e1(i)), E0_min);
++			_ppf_hold_zero[i] = false;
++			_trigger_armed[i] = false;
++
++			if (i == 2 && _bppsmc_rampup_active) {
++				_z_rampup_first_trigger_done = true;
++			}
++		}
++
++		debug_msg.rho_center[i] = rho_center;
++		debug_msg.sliding_surface[i] = S;
++		debug_msg.trigger_count[i] = _trigger_count[i];
++		debug_msg.acceleration_sp[i] = acc_sp_bppsmc(i);
++		debug_msg.e0[i] = _e0[i];
++		debug_msg.t0[i] = _t0[i];
++	}
++
++	_acc_sp = acc_sp_bppsmc;
++	// Maps acc_sp to thrust; hover_thrust is applied here (acc_sp.z=0 -> hover).
++	_accelerationControl();
++	_bppsmc_debug_pub.publish(debug_msg);
++	_pd_pure_prev = _pd_pure;
++}
++
++
++void PositionControl::_resetBaselineState()
++{
++	for (int i = 0; i < 3; i++) {
++		_bl_init[i] = false;
++		_ea_alpha_hat[i][0] = _ea_alpha_hat[i][1] = 0.f;
++		_ea_beta_hat[i][0] = _ea_beta_hat[i][1] = 0.f;
++		_ea_zeta[i] = _ea_eta[i] = 0.f;
++
++		for (int k = 0; k < 5; k++) { _ea_theta_hat[i][k] = 0.f; }
++
++		_ea_hbar_prev[i] = _ea_hbar_dot[i] = 0.f;
++		_ea_trig_pos[i] = _ea_trig_vel[i] = 0;
++
++		for (int k = 0; k < 3; k++) { _imr_xi[i][k] = 0.f; }
++
++		_imr_W[i] = 0.f;
++		_imr_y_held[i] = 0.f;
++		_imr_trig[i] = 0;
++		_imr_sat[i] = false;
++		_fx_xp_hat[i] = _fx_xv_hat[i] = _fx_phi_hat[i] = _fx_f_prev[i] = 0.f;
++		_bl_t0_us[i] = 0;
++	}
++}
++
++// ET-ADRC baseline - Xu, Wang, Wang & Long, "Event-triggered active disturbance rejection
++// trajectory tracking control for a quadrotor UAV", Appl. Math. Comput. 449 (2023) 127967.
++// Per-axis cascade: position ESO (eq.13) + ET (eq.16) -> pseudo-control hbar (eq.17);
++// velocity ESO (eq.20) + ET (eq.22) + FLS adaptation (eq.23) -> u (eq.24) = acc_sp.
++// Implementation decisions (disclosed in the ledger): tau fixed at TAU (paper Remark 2:
++// converged tau <=> fixed-threshold ET); FLS realized as 5 Gaussian bases on chi2_hat;
++// hbar_dot from first-order-filtered numeric differentiation.
++void PositionControl::_applyEtAdrc(const Vector3f &acc_sp_pid, float dt)
++{
++	// Bandwidth parameterization (Gao 2003): outer loop wc=kappa1*tau=1.2 rad/s
++	// (2.4x margin over the w=0.5 reference), inner loop wc=kappa2*tau=4.8 rad/s
++	// (cascade 3-5x rule). ESO gains per loop: L=[2wo, wo^2] with wo~3wc (pos)
++	// and half-gain (Herbst 2020) on the velocity ESO to avoid exciting the
++	// event-held-input quantization.
++	static constexpr float TAU = 2.0f;                     // fixed adaptive parameter (eq.25 frozen)
++	static constexpr float KAPPA1[3] = {0.6f, 0.6f, 0.6f};   // wc_pos = 1.2
++	static constexpr float KAPPA2[3] = {0.8f, 0.8f, 2.4f};   // R3: soft wc_vel_xy=1.6 (was 2.4)
++	static constexpr float D1P = 3.6f, D2P = 3.24f;        // pos ESO: wo=3.6
++	// vel ESO: restore v7 wo~6.8 (R2 scale hurt rms without cutting sat)
++	static constexpr float D1V_AX[3] = {4.8f, 4.8f, 4.8f};
++	static constexpr float D2V_AX[3] = {11.5f, 11.5f, 11.5f};
++	static constexpr float B2_CLAMP[3] = {4.f, 4.f, 4.f};
++	static constexpr float RHO1 = 0.55f, RHO2 = 1.96f;     // thresh 0.02 m / 0.03 m/s
++	static constexpr float GAMMA = 0.5f, LAMBDA_TH = 0.1f; // FLS adaptation (eq.23)
++	static constexpr float FLS_C[5] = {-2.f, -1.f, 0.f, 1.f, 2.f};
++
++	const uint64_t now_us = hrt_absolute_time();
++	Vector3f acc_out{};
++	bppsmc_debug_s dbg{};
++	dbg.timestamp = now_us;
++	dt = math::max(dt, 1e-4f);
++
++	for (int i = 0; i < 3; i++) {
++		if (!_bppsmcAxisActive(i) || !PX4_ISFINITE(_pos(i)) || !PX4_ISFINITE(_vel(i))
++		    || !PX4_ISFINITE(_pd_pure(i)) || !PX4_ISFINITE(_vd_pure(i))) {
++			acc_out(i) = acc_sp_pid(i);
++			dbg.sliding_surface[i] = NAN;
++			dbg.rho_center[i] = NAN;
++			dbg.acceleration_sp[i] = acc_out(i);
++			dbg.trigger_count[i] = _ea_trig_pos[i];
++			continue;
++		}
++
++		const float r = _pd_pure(i);
++		const float r_dot = _vd_pure(i);
++		const float alpha1 = _pos(i) - r;      // chi_{i,1} - r_i
++
++		if (!_bl_init[i]) {
++			_bl_init[i] = true;
++			_ea_alpha_hat[i][0] = alpha1;
++			_ea_zeta[i] = alpha1;
++			const float hbar0 = math::constrain(-KAPPA1[i] * TAU * alpha1 + r_dot, -3.f, 3.f);
++			_ea_beta_hat[i][0] = _vel(i) - hbar0;
++			_ea_eta[i] = _ea_beta_hat[i][0];
++			_ea_hbar_prev[i] = hbar0;
++			_bl_t0_us[i] = now_us;
++		}
++
++		// --- position-loop ET (eq.16 reduces to a held-error threshold under fixed tau) ---
++		if (fabsf(_ea_zeta[i] - alpha1) >= RHO1 / ((D1P + D2P) * TAU * TAU)) {
++			_ea_zeta[i] = alpha1;
++			_ea_trig_pos[i]++;
++		}
++
++		// --- position-loop ESO (eq.13) ---
++		const float sigma = TAU * (_ea_zeta[i] - _ea_alpha_hat[i][0]);
++		// pseudo-control = commanded velocity; clamp to a reachable magnitude (anti-windup,
++		// implementation deviation disclosed in the ledger)
++		const float hbar_raw = -KAPPA1[i] * TAU * _ea_alpha_hat[i][0] - _ea_alpha_hat[i][1] + r_dot;
++		const float hbar = math::constrain(hbar_raw, -3.f, 3.f);
++		const float da1 = hbar + _ea_alpha_hat[i][1] - r_dot + D1P * sigma;   // alpha1_hat_dot
++		const float da2 = TAU * D2P * sigma;                                   // alpha2_hat_dot
++		_ea_alpha_hat[i][0] += dt * da1;
++		_ea_alpha_hat[i][1] = math::constrain(_ea_alpha_hat[i][1] + dt * da2, -3.f, 3.f);
++
++		// hbar_dot: ANALYTIC (chain rule through the ESO, r_ddot = _ad_pure feedforward);
++		// zero while the pseudo-control clamp is active. Replaces the noisy numeric
++		// derivative that amplified event-update steps into spikes.
++		const float r_ddot = PX4_ISFINITE(_ad_pure(i)) ? _ad_pure(i) : 0.f;
++		_ea_hbar_dot[i] = (fabsf(hbar_raw) < 3.f)
++				  ? (-KAPPA1[i] * TAU * da1 - da2 + r_ddot) : 0.f;
++		_ea_hbar_prev[i] = hbar;
++
++		// --- velocity-loop ET (eq.22) ---
++		const float beta1 = _vel(i) - hbar;
++
++		if (fabsf(_ea_eta[i] - beta1) >= RHO2 / ((D1V_AX[i] + D2V_AX[i]) * TAU * TAU)) {
++			_ea_eta[i] = beta1;
++			_ea_trig_vel[i]++;
++		}
++
++		// --- FLS basis on chi2_hat (5 Gaussians, normalized) ---
++		const float chi2_hat = hbar + _ea_beta_hat[i][0];
++		float phi[5];
++		float phi_sum = 1e-6f;
++
++		for (int k = 0; k < 5; k++) {
++			const float e = chi2_hat - FLS_C[k];
++			phi[k] = expf(-0.5f * e * e);
++			phi_sum += phi[k];
++		}
++
++		float theta_phi = 0.f;
++
++		for (int k = 0; k < 5; k++) {
++			phi[k] /= phi_sum;
++			theta_phi += _ea_theta_hat[i][k] * phi[k];
++		}
++
++		// --- velocity-loop ESO (eq.20) + control (eq.24) ---
++		const float rho_v = TAU * (_ea_eta[i] - _ea_beta_hat[i][0]);
++		const float u = -KAPPA2[i] * TAU * _ea_beta_hat[i][0] - _ea_beta_hat[i][1]
++				- theta_phi + _ea_hbar_dot[i];
++		const float lim_i = _bppsmc_acc_max(i);
++		const float u_sat = math::constrain(u, -lim_i, lim_i);   // actual applied input
++		_ea_beta_hat[i][0] += dt * (u_sat + theta_phi + _ea_beta_hat[i][1] - _ea_hbar_dot[i] + D1V_AX[i] * rho_v);
++		// Conditional anti-windup on beta2 (disturbance): freeze D2V integration
++		// while the applied acceleration is saturated — stops integral windup that
++		// rides B2_CLAMP under event-held quantized feedback (ET-ADRC tune R1).
++		const bool u_at_limit = (fabsf(u - u_sat) > 1e-6f);
++		const float db2 = u_at_limit ? 0.f : (TAU * D2V_AX[i] * rho_v);
++		_ea_beta_hat[i][1] = math::constrain(_ea_beta_hat[i][1] + dt * db2,
++						     -B2_CLAMP[i], B2_CLAMP[i]);
++
++		// --- FLS weights (eq.23) with norm projection ---
++		float th_norm2 = 0.f;
++
++		for (int k = 0; k < 5; k++) {
++			_ea_theta_hat[i][k] += dt * 2.f * GAMMA
++					       * (_ea_beta_hat[i][0] * phi[k] / TAU - LAMBDA_TH * _ea_theta_hat[i][k]);
++			th_norm2 += _ea_theta_hat[i][k] * _ea_theta_hat[i][k];
++		}
++
++		if (th_norm2 > 25.f) {
++			const float sc = 5.f / sqrtf(th_norm2);
++
++			for (int k = 0; k < 5; k++) { _ea_theta_hat[i][k] *= sc; }
++		}
++
++		acc_out(i) = PX4_ISFINITE(u_sat) ? u_sat : _ad_pure(i);
++		// note: r_ddot feedforward enters through hbar_dot (hbar contains r_dot), matching eq.24
++
++		dbg.sliding_surface[i] = beta1;
++		dbg.rho_center[i] = _ea_alpha_hat[i][1];   // pos-loop disturbance estimate
++		dbg.acceleration_sp[i] = acc_out(i);
++		dbg.e0[i] = _ea_beta_hat[i][1];            // vel-loop disturbance estimate
++		dbg.t0[i] = (float)_ea_trig_vel[i];
++		dbg.trigger_count[i] = _ea_trig_pos[i];
++	}
++
++	_acc_sp = acc_out;
++	_accelerationControl();
++	_bppsmc_debug_pub.publish(dbg);
++	_pd_pure_prev = _pd_pure;
++}
++
++// ET-IMR v2 — Zhao et al., IJRNC 35 (2025) internal-model framework (zhao2025event),
++// PX4-adapted: 2nd-order error plant with measured (p_e,v_e), no double-filter / no ESO.
++// u = -Kp pe - Kv ve - Kxi·xi;  xi <- Phi_d xi + N_d y_held  (gains: etimr_gains.h).
++void PositionControl::_applyEtImr(const Vector3f &acc_sp_pid, float dt)
++{
++	const uint64_t now_us = hrt_absolute_time();
++	Vector3f acc_out{};
++	bppsmc_debug_s dbg{};
++	dbg.timestamp = now_us;
++	(void)dt;
++	const float w_decay = expf(-etimr::ALPHA * etimr::DT);
++
++	for (int i = 0; i < 3; i++) {
++		if (!_bppsmcAxisActive(i) || !PX4_ISFINITE(_pos(i)) || !PX4_ISFINITE(_vel(i))
++		    || !PX4_ISFINITE(_pd_pure(i)) || !PX4_ISFINITE(_vd_pure(i))) {
++			acc_out(i) = acc_sp_pid(i);
++			dbg.sliding_surface[i] = NAN;
++			dbg.rho_center[i] = NAN;
++			dbg.acceleration_sp[i] = acc_out(i);
++			dbg.e0[i] = NAN;
++			dbg.trigger_count[i] = _imr_trig[i];
++			continue;
++		}
++
++		const float pe = _pos(i) - _pd_pure(i);
++		const float ve = _vel(i) - _vd_pure(i);
++
++		if (!_bl_init[i]) {
++			_bl_init[i] = true;
++			_imr_y_held[i] = pe;
++			_imr_W[i] = etimr::W0;
++			_imr_trig[i] = 0;
++			_imr_sat[i] = false;
++
++			for (int k = 0; k < etimr::XI_DIM; k++) { _imr_xi[i][k] = 0.f; }
++
++			_bl_t0_us[i] = now_us;
++		}
++
++		const float thr2 = math::max(_imr_W[i] / etimr::THETA, etimr::DELTA * etimr::DELTA);
++
++		if ((pe - _imr_y_held[i]) * (pe - _imr_y_held[i]) >= thr2) {
++			_imr_y_held[i] = pe;
++			_imr_trig[i]++;
++		}
++
++		const float (*Phi)[3] = (i == 0) ? etimr::Phi_d_x : ((i == 1) ? etimr::Phi_d_y : etimr::Phi_d_z);
++		const float (*Nd)[1] = (i == 0) ? etimr::N_d_x : ((i == 1) ? etimr::N_d_y : etimr::N_d_z);
++		const float (*Kxi)[3] = (i == 0) ? etimr::Kxi_x : ((i == 1) ? etimr::Kxi_y : etimr::Kxi_z);
++		const float Kp = (i == 0) ? etimr::Kp_x : ((i == 1) ? etimr::Kp_y : etimr::Kp_z);
++		const float Kv = (i == 0) ? etimr::Kv_x : ((i == 1) ? etimr::Kv_y : etimr::Kv_z);
++
++		float xi_new[3] {};
++
++		for (int r = 0; r < etimr::XI_DIM; r++) {
++			float s = Nd[r][0] * _imr_y_held[i];
++
++			for (int c = 0; c < etimr::XI_DIM; c++) {
++				s += Phi[r][c] * _imr_xi[i][c];
++			}
++
++			xi_new[r] = s;
++		}
++
++		for (int k = 0; k < etimr::XI_DIM; k++) { _imr_xi[i][k] = xi_new[k]; }
++
++		_imr_W[i] *= w_decay;
++
++		float u = -Kp * pe - Kv * ve;
++
++		for (int k = 0; k < etimr::XI_DIM; k++) { u -= Kxi[0][k] * _imr_xi[i][k]; }
++
++		const float ad_ff = PX4_ISFINITE(_ad_pure(i)) ? _ad_pure(i) : 0.f;
++		const float lim_i = _bppsmc_acc_max(i);
++		const float acc_raw = ad_ff + u;
++		acc_out(i) = math::constrain(acc_raw, -lim_i, lim_i);
++		_imr_sat[i] = (fabsf(acc_raw - acc_out(i)) > 1e-6f);
++
++		dbg.sliding_surface[i] = pe;
++		dbg.rho_center[i] = u;
++		dbg.e0[i] = _imr_xi[i][0];
++		dbg.t0[i] = _imr_W[i];
++		dbg.trigger_count[i] = _imr_trig[i];
++		dbg.acceleration_sp[i] = acc_out(i);
++	}
++
++	_acc_sp = acc_out;
++	_accelerationControl();
++	_bppsmc_debug_pub.publish(dbg);
++	_pd_pure_prev = _pd_pure;
++}
++
++// FxT-OF baseline - Shao, Tian & Yang, "Fixed-time trajectory following for quadrotors via
++// output feedback", ISA Trans. 110 (2021) 213-224. Per-axis FTESO (eq.4, position
++// measurement only - EKF velocity deliberately unused) + fixed-time law (eq.10) = acc_sp.
++// sign() smoothed by tanh(./EPS) per the paper's Remark 5; attitude loop (eq.11-15) is
++// PX4-native (consistent with the paper's inner-outer separation assumption).
++void PositionControl::_applyFxtOf(const Vector3f &acc_sp_pid, float dt)
++{
++	static constexpr float KP[3] = {1.5f, 1.5f, 2.0f};
++	static constexpr float KV[3] = {2.5f, 2.5f, 3.0f};
++	static constexpr float A1 = 0.6f, A2 = 0.6f;          // fractional exponents alpha_1/2
++	static constexpr float LV = 2.0f;                      // disturbance Lipschitz guess
++	static constexpr float DELTA = 0.1f, TU = 1.0f, EPS = 0.05f;
++	const float l1 = 2.f * powf(LV, 1.f / 3.f), l2 = 1.5f * powf(LV, 2.f / 3.f), l3 = 1.1f * LV;
++	static constexpr float K1 = 6.f, K2 = 11.f, K3 = 6.f; // Hurwitz (poles -1,-2,-3)
++
++	auto spow = [](float x, float p) { return powf(fabsf(x), p) * ((x > 0.f) - (x < 0.f)); };
++
++	const uint64_t now_us = hrt_absolute_time();
++	Vector3f acc_out{};
++	bppsmc_debug_s dbg{};
++	dbg.timestamp = now_us;
++	dt = math::max(dt, 1e-4f);
++
++	const float e1p = A1 / (2.f - A1), e2p = (4.f - 3.f * A1) / (2.f - A1);
++	const float e1v = A2 / (2.f - A2), e2v = (4.f - 3.f * A2) / (3.f - 2.f * A2);
++
++	for (int i = 0; i < 3; i++) {
++		if (!_bppsmcAxisActive(i) || !PX4_ISFINITE(_pos(i)) || !PX4_ISFINITE(_pd_pure(i))) {
++			acc_out(i) = acc_sp_pid(i);
++			dbg.sliding_surface[i] = NAN;
++			dbg.rho_center[i] = NAN;
++			dbg.acceleration_sp[i] = acc_out(i);
++			continue;
++		}
++
++		if (!_bl_init[i]) {
++			_bl_init[i] = true;
++			_fx_xp_hat[i] = _pos(i);
++			_fx_xv_hat[i] = 0.f;
++			_fx_phi_hat[i] = 0.f;
++			_fx_f_prev[i] = 0.f;
++			_bl_t0_us[i] = now_us;
++		}
++
++		const float t_seg = (now_us - _bl_t0_us[i]) * 1e-6f;
++		const float th = (t_seg <= TU) ? 0.f : 1.f;        // theta(t), eq.(3) in paper Sec.3.1
++
++		// --- FTESO (eq.4): only position measurement enters ---
++		const float zp = _pos(i) - _fx_xp_hat[i];
++		const float dxp = _fx_xv_hat[i] + l1 * th * spow(zp, 2.f / 3.f)
++				  + K1 * (1.f - th) * spow(zp, (3.f + DELTA) / 3.f);
++		const float dxv = _fx_phi_hat[i] + _fx_f_prev[i] + l2 * th * spow(zp, 1.f / 3.f)
++				  + K2 * (1.f - th) * spow(zp, (3.f + 2.f * DELTA) / 3.f);
++		const float dph = l3 * th * tanhf(zp / EPS) + K3 * (1.f - th) * spow(zp, 1.f + DELTA);
++		_fx_xp_hat[i] += dt * dxp;
++		_fx_xv_hat[i] += dt * dxv;
++		_fx_phi_hat[i] += dt * dph;
++		_fx_phi_hat[i] = math::constrain(_fx_phi_hat[i], -10.f, 10.f);
++
++		// --- fixed-time control law (eq.10) ---
++		const float sp = _pos(i) - _pd_pure(i);
++		const float sv = _fx_xv_hat[i] - _vd_pure(i);
++		const float F = -KP[i] * (spow(sp, e1p) + sp + spow(sp, e2p))
++				- KV[i] * (spow(sv, e1v) + sv + spow(sv, e2v))
++				- _fx_phi_hat[i] + _ad_pure(i);
++
++		const float lim = _bppsmc_acc_max(i);
++		acc_out(i) = PX4_ISFINITE(F) ? math::constrain(F, -lim, lim) : _ad_pure(i);
++		_fx_f_prev[i] = acc_out(i);
++
++		dbg.sliding_surface[i] = sp;
++		dbg.rho_center[i] = _fx_xv_hat[i];
++		dbg.acceleration_sp[i] = acc_out(i);
++		dbg.e0[i] = _fx_phi_hat[i];
++		dbg.t0[i] = t_seg;
++		dbg.trigger_count[i] = 0;
++	}
++
++	_acc_sp = acc_out;
++	_accelerationControl();
++	_bppsmc_debug_pub.publish(dbg);
++	_pd_pure_prev = _pd_pure;
++}
++
+ bool PositionControl::update(const float dt)
+ {
+ 	bool valid = _inputValid();
+ 
+ 	if (valid) {
++		_capturePureSetpoints();
+ 		_positionControl();
+ 		_velocityControl(dt);
+ 
++		const Vector3f acc_sp_pid = _acc_sp;
++		const Vector3f thr_sp_pid = _thr_sp;
++		const bool bppsmc_ready = _bppsmcReady();
++
++		if (!bppsmc_ready && _bppsmc_was_ready) {
++			resetBppsmcState();
++		}
++
++		if (bppsmc_ready) {
++#if BASELINE_CONTROLLER == 1
++			_applyEtAdrc(acc_sp_pid, dt);
++#elif BASELINE_CONTROLLER == 2
++			_applyFxtOf(acc_sp_pid, dt);
++#elif BASELINE_CONTROLLER == 3
++			_applyEtImr(acc_sp_pid, dt);
++#else
++		_applyBppsmcOverride(acc_sp_pid);
++#endif
++
++			if (!_acc_sp.isAllFinite() || !_thr_sp.isAllFinite()) {
++				_acc_sp = acc_sp_pid;
++				_thr_sp = thr_sp_pid;
++			}
++		}
++
++		_bppsmc_was_ready = bppsmc_ready;
++
+ 		_yawspeed_sp = PX4_ISFINITE(_yawspeed_sp) ? _yawspeed_sp : 0.f;
+ 		_yaw_sp = PX4_ISFINITE(_yaw_sp) ? _yaw_sp : _yaw; // TODO: better way to disable yaw control
+ 	}
+diff --git a/src/modules/mc_pos_control/PositionControl/PositionControl.hpp b/src/modules/mc_pos_control/PositionControl/PositionControl.hpp
+index 85af876..ca8caf6 100644
+--- a/src/modules/mc_pos_control/PositionControl/PositionControl.hpp
++++ b/src/modules/mc_pos_control/PositionControl/PositionControl.hpp
+@@ -41,9 +41,12 @@
+ 
+ #include <lib/mathlib/mathlib.h>
+ #include <matrix/matrix/math.hpp>
++#include <uORB/Publication.hpp>
+ #include <uORB/topics/trajectory_setpoint.h>
++#include <uORB/topics/bppsmc_debug.h>
+ #include <uORB/topics/vehicle_attitude_setpoint.h>
+ #include <uORB/topics/vehicle_local_position_setpoint.h>
++#include "etimr_gains.h"
+ 
+ struct PositionControlStates {
+ 	matrix::Vector3f position;
+@@ -52,6 +55,25 @@ struct PositionControlStates {
+ 	float yaw;
+ };
+ 
++struct BppsmcParameters {
++	matrix::Vector3f ppf_acceleration{0.72f, 0.72f, 0.90f};
++	matrix::Vector3f funnel_width{0.75f, 0.75f, 0.75f};
++	matrix::Vector3f trigger_fraction{0.76f, 0.76f, 0.95f};
++	matrix::Vector3f surface_gain{1.40f, 1.40f, 1.75f};
++	matrix::Vector3f reaching_gain{1.20f, 1.20f, 1.80f};
++	matrix::Vector3f switching_gain{0.20f, 0.20f, 0.35f};
++	matrix::Vector3f boundary_layer{1.50f, 1.50f, 1.20f};
++	matrix::Vector3f acceleration_limit{6.f, 6.f, 10.f};
++	float funnel_fraction{0.10f};
++	float reaching_time{2.f};
++	float reaching_tolerance{0.1f};
++	float sliding_time{2.f};
++	float sliding_tolerance{0.1f};
++	float minimum_error{0.05f};
++	float authority_threshold{0.05f};
++	float rampup_trigger{0.30f};
++};
++
+ /**
+  * 	Core Position-Control for MC.
+  * 	This class contains P-controller for position and
+@@ -163,6 +185,32 @@ public:
+ 	 */
+ 	void resetIntegral() { _vel_int.setZero(); }
+ 
++	/**
++	 * Enable/disable ET-BPPSMC acceleration override.
++	 */
++	void setBppsmcEnabled(bool enabled) { _bppsmc_enabled = enabled; }
++
++	/** Apply validated parameters and reset the event memory while disarmed. */
++	void setBppsmcParameters(const BppsmcParameters &parameters);
++
++	/** True while takeoff rampup is active (Z uses tighter ET threshold). */
++	void setBppsmcRampupActive(bool rampup) { _bppsmc_rampup_active = rampup; }
++
++	/** Latch arm rising-edge time for ET segment alignment (since_arm plots). */
++	void setBppsmcArmReferenceUs(uint64_t t_us) { _arm_ref_us = t_us; }
++
++	/**
++	 * Reset ET-BPPSMC internal state (pure setpoints + event-trigger memory).
++	 * Call when leaving flight phase or after PX4 ground-hold failsafe setpoints.
++	 */
++	void resetBppsmcState();
++
++	/**
++	 * Set absolute acceleration limits (safety clamp) for BPPSMC output.
++	 * Units: m/s^2 in NED frame.
++	 */
++	void setBppsmcAccelerationLimits(const matrix::Vector3f &acc_max) { _bppsmc_acc_max = acc_max; }
++
+ 	/**
+ 	 * If set, the tilt setpoint is computed by assuming no vertical acceleration
+ 	 */
+@@ -196,10 +244,32 @@ private:
+ 
+ 	bool _inputValid();
+ 
++	/** True when at least one axis is eligible for ET-BPPSMC. */
++	bool _bppsmcReady() const;
++
++	bool _bppsmcAxisReady(int axis) const;
++	bool _bppsmcAxisActive(int axis) const;
++
+ 	void _positionControl(); ///< Position proportional control
+ 	void _velocityControl(const float dt); ///< Velocity PID control
+ 	void _accelerationControl(); ///< Acceleration setpoint processing
+ 
++	/** Capture pure external setpoints before native P-loop contamination. */
++	void _capturePureSetpoints();
++
++	/** ET-BPPSMC: overwrite _acc_sp and re-run thrust mapping. */
++	void _applyBppsmcOverride(const matrix::Vector3f &acc_sp_pid);
++	void _applyEtAdrc(const matrix::Vector3f &acc_sp_pid, float dt);
++	void _applyEtImr(const matrix::Vector3f &acc_sp_pid, float dt);
++	void _applyFxtOf(const matrix::Vector3f &acc_sp_pid, float dt);
++	void _resetBaselineState();
++
++	/** Clear ET-BPPSMC persistent state (e.g. leaving valid tracking window). */
++	void _resetBppsmcEtState();
++
++	/** Clear captured pure setpoints (after failsafe / pre-takeoff sentinels). */
++	void _resetBppsmcPureSetpoints();
++
+ 	// Gains
+ 	matrix::Vector3f _gain_pos_p; ///< Position control proportional gain
+ 	matrix::Vector3f _gain_vel_p; ///< Velocity control proportional gain
+@@ -232,4 +302,55 @@ private:
+ 	matrix::Vector3f _thr_sp; /**< desired thrust */
+ 	float _yaw_sp{}; /**< desired heading */
+ 	float _yawspeed_sp{}; /** desired yaw-speed */
++
++	// --- ET-BPPSMC (firmware-embedded) ---
++	bool _bppsmc_enabled{false};
++	BppsmcParameters _bppsmc_parameters{};
++	bool _bppsmc_rampup_active{false};
++	uint64_t _arm_ref_us{0};
++	bool _z_rampup_first_trigger_done{false};
++
++	matrix::Vector3f _pd_pure{NAN, NAN, NAN};
++	matrix::Vector3f _pd_pure_prev{NAN, NAN, NAN};
++	matrix::Vector3f _vd_pure{NAN, NAN, NAN};
++	matrix::Vector3f _ad_pure{NAN, NAN, NAN};
++
++	matrix::Vector3f _bppsmc_acc_max{6.f, 6.f, 10.f};
++
++	bool _et_init[3] {false, false, false};
++
++	// ---- baseline variant states (ET-ADRC / ET-IMR / FxT-OF), reset via _resetBaselineState() ----
++	bool _bl_init[3] {false, false, false};
++	// ET-ADRC (Xu et al., AMC 449, 2023): cascade ESO + event-triggered sampling
++	float _ea_alpha_hat[3][2] {};      // position-loop ESO states
++	float _ea_beta_hat[3][2] {};       // velocity-loop ESO states
++	float _ea_zeta[3] {};              // ET-held position error (pos loop)
++	float _ea_eta[3] {};               // ET-held velocity error (vel loop)
++	float _ea_theta_hat[3][5] {};      // FLS weights (5 Gaussian bases)
++	float _ea_hbar_prev[3] {};         // previous pseudo-control (for hbar_dot)
++	float _ea_hbar_dot[3] {};          // filtered derivative of pseudo-control
++	uint32_t _ea_trig_pos[3] {};       // pos-loop transmission count
++	uint32_t _ea_trig_vel[3] {};       // vel-loop transmission count
++	// ET-IMR v2 (Zhao IM framework, PX4-adapted): measured (pe,ve) + xi[3]
++	// u = -Kp pe - Kv ve - Kxi·xi; xi <- Phi_d xi + N_d y_held  (etimr_gains.h)
++	float _imr_xi[3][3] {};
++	float _imr_W[3] {};
++	float _imr_y_held[3] {};
++	uint32_t _imr_trig[3] {};
++	bool _imr_sat[3] {false, false, false};
++	// FxT-OF (Shao et al., ISA Trans. 110, 2021): FTESO + fixed-time controller
++	float _fx_xp_hat[3] {};            // position estimate
++	float _fx_xv_hat[3] {};            // velocity estimate (output feedback: no EKF vel used)
++	float _fx_phi_hat[3] {};           // lumped disturbance estimate
++	float _fx_f_prev[3] {};            // previous acceleration command (observer input)
++	uint64_t _bl_t0_us[3] {};          // controller segment start (theta(t) switch)
++	bool _ppf_hold_zero[3] {false, false, false};
++	bool _trigger_armed[3] {true, true, true}; ///< ET re-arm latch (true = next event allowed)
++	float _dir[3] {0.f, 0.f, 0.f};
++	float _e0[3] {0.f, 0.f, 0.f};
++	uint64_t _t0[3] {0, 0, 0};
++	uint32_t _trigger_count[3] {0, 0, 0};
++	bool _bppsmc_was_ready{false};
++
++	uORB::Publication<bppsmc_debug_s> _bppsmc_debug_pub{ORB_ID(bppsmc_debug)};
+ };
+diff --git a/src/modules/mc_pos_control/PositionControl/PositionControlTest.cpp b/src/modules/mc_pos_control/PositionControl/PositionControlTest.cpp
+index 0e5a606..852cbc4 100644
+--- a/src/modules/mc_pos_control/PositionControl/PositionControlTest.cpp
++++ b/src/modules/mc_pos_control/PositionControl/PositionControlTest.cpp
+@@ -34,6 +34,8 @@
+ #include <gtest/gtest.h>
+ #include <PositionControl.hpp>
+ #include <px4_defines.h>
++#include <uORB/uORBManager.hpp>
++#include <uORB/Subscription.hpp>
+ 
+ using namespace matrix;
+ 
+@@ -69,6 +71,8 @@ TEST(PositionControlTest, EmptySetpoint)
+ class PositionControlBasicTest : public ::testing::Test
+ {
+ public:
++	static void SetUpTestSuite() { uORB::Manager::initialize(); }
++
+ 	PositionControlBasicTest()
+ 	{
+ 		_position_control.setPositionGains(Vector3f(1.f, 1.f, 1.f));
+@@ -115,6 +119,77 @@ public:
+ 	}
+ };
+ 
++TEST_F(PositionControlBasicTest, BppsmcSelection)
++{
++	Vector3f(0.f, 0.f, -0.2f).copyTo(_input_setpoint.position);
++	ASSERT_TRUE(runController());
++	const float native_acceleration = _output_setpoint.acceleration[2];
++	_position_control.setBppsmcEnabled(true);
++	ASSERT_TRUE(runController());
++	EXPECT_GT(fabsf(_output_setpoint.acceleration[2] - native_acceleration), 0.05f);
++}
++
++TEST_F(PositionControlBasicTest, BppsmcActivatesForStaticHorizontalPositionSetpoint)
++{
++	Vector3f(0.2f, 0.f, 0.f).copyTo(_input_setpoint.position);
++	ASSERT_TRUE(runController());
++	const float native_acceleration_x = _output_setpoint.acceleration[0];
++
++	_position_control.setBppsmcEnabled(true);
++	ASSERT_TRUE(runController());
++	EXPECT_GT(fabsf(_output_setpoint.acceleration[0] - native_acceleration_x), 0.05f);
++}
++
++TEST_F(PositionControlBasicTest, BppsmcAccelerationLimits)
++{
++	BppsmcParameters parameters{};
++	parameters.acceleration_limit = Vector3f(0.2f, 0.3f, 0.4f);
++	_position_control.setBppsmcParameters(parameters);
++	_position_control.setBppsmcEnabled(true);
++	Vector3f(2.f, -2.f, -2.f).copyTo(_input_setpoint.position);
++	Vector3f(0.1f, -0.1f, -0.1f).copyTo(_input_setpoint.velocity);
++	ASSERT_TRUE(runController());
++
++	for (int i = 0; i < 3; i++) {
++		EXPECT_LE(fabsf(_output_setpoint.acceleration[i]), parameters.acceleration_limit(i));
++	}
++}
++
++TEST_F(PositionControlBasicTest, BppsmcGainChangesOutput)
++{
++	Vector3f(0.f, 0.f, -0.2f).copyTo(_input_setpoint.position);
++	_position_control.setBppsmcEnabled(true);
++	BppsmcParameters parameters{};
++	parameters.reaching_gain(2) = 0.2f;
++	_position_control.setBppsmcParameters(parameters);
++	ASSERT_TRUE(runController());
++	const float low_gain_acceleration = _output_setpoint.acceleration[2];
++	parameters.reaching_gain(2) = 3.f;
++	_position_control.setBppsmcParameters(parameters);
++	ASSERT_TRUE(runController());
++	EXPECT_GT(fabsf(_output_setpoint.acceleration[2] - low_gain_acceleration), 0.05f);
++}
++
++TEST_F(PositionControlBasicTest, BppsmcInvalidParametersRemainFinite)
++{
++	BppsmcParameters parameters{};
++	parameters.ppf_acceleration.setZero();
++	parameters.funnel_width.setZero();
++	parameters.boundary_layer.setZero();
++	parameters.trigger_fraction.setNaN();
++	parameters.acceleration_limit.setNaN();
++	parameters.reaching_time = 0.f;
++	parameters.sliding_time = 0.f;
++	parameters.reaching_tolerance = NAN;
++	parameters.sliding_tolerance = NAN;
++	_position_control.setBppsmcParameters(parameters);
++	_position_control.setBppsmcEnabled(true);
++	Vector3f(0.f, 0.f, -0.2f).copyTo(_input_setpoint.position);
++	ASSERT_TRUE(runController());
++	EXPECT_TRUE(Vector3f(_output_setpoint.acceleration).isAllFinite());
++	EXPECT_TRUE(Vector3f(_output_setpoint.thrust).isAllFinite());
++}
++
+ TEST_F(PositionControlBasicDirectionTest, PositionDirection)
+ {
+ 	Vector3f(.1f, .1f, -.1f).copyTo(_input_setpoint.position);
+diff --git a/src/modules/simulation/gz_bridge/GZBridge.cpp b/src/modules/simulation/gz_bridge/GZBridge.cpp
+index 56c6d02..16db35f 100644
+--- a/src/modules/simulation/gz_bridge/GZBridge.cpp
++++ b/src/modules/simulation/gz_bridge/GZBridge.cpp
+@@ -33,6 +33,8 @@
+ 
+ #include "GZBridge.hpp"
+ 
++#include <drivers/drv_sensor.h>
++#include <lib/drivers/device/Device.hpp>
+ #include <uORB/Subscription.hpp>
+ 
+ #include <lib/atmosphere/atmosphere.h>
+@@ -719,24 +721,60 @@ void GZBridge::navSatCallback(const gz::msgs::NavSat &nav_sat)
+ 		updateClock(nav_sat.header().stamp().sec(), nav_sat.header().stamp().nsec());
+ 	}
+ 
+-	// initialize gps position
++	const hrt_abstime timestamp = hrt_absolute_time();
++	const uint64_t timestamp_sample = time_us > 0 ? time_us : timestamp;
++
++	// Initialize the local projection from the first GPS sample.
+ 	if (!_pos_ref.isInitialized()) {
+-		_pos_ref.initReference(nav_sat.latitude_deg(), nav_sat.longitude_deg(), hrt_absolute_time());
++		_pos_ref.initReference(nav_sat.latitude_deg(), nav_sat.longitude_deg(), timestamp);
+ 		_alt_ref = nav_sat.altitude();
++	}
+ 
+-	} else {
+-		// publish GPS groundtruth
+-		vehicle_global_position_s global_position_groundtruth{};
++	// Publish the simulated receiver input used by the EKF, not only ground truth.
++	device::Device::DeviceId device_id;
++	device_id.devid_s.bus_type = device::Device::DeviceBusType::DeviceBusType_SIMULATION;
++	device_id.devid_s.bus = 0;
++	device_id.devid_s.address = 0;
++	device_id.devid_s.devtype = DRV_GPS_DEVTYPE_SIM;
++
++	sensor_gps_s gps{};
++	gps.timestamp = timestamp;
++	gps.timestamp_sample = timestamp_sample;
++	gps.device_id = device_id.devid;
++	gps.latitude_deg = nav_sat.latitude_deg();
++	gps.longitude_deg = nav_sat.longitude_deg();
++	gps.altitude_msl_m = nav_sat.altitude();
++	gps.altitude_ellipsoid_m = nav_sat.altitude();
++	gps.s_variance_m_s = 0.4f;
++	gps.c_variance_rad = 0.1f;
++	gps.fix_type = sensor_gps_s::FIX_TYPE_3D;
++	gps.eph = 0.9f;
++	gps.epv = 1.78f;
++	gps.hdop = 0.7f;
++	gps.vdop = 1.1f;
++	gps.vel_e_m_s = nav_sat.velocity_east();
++	gps.vel_n_m_s = nav_sat.velocity_north();
++	gps.vel_d_m_s = -nav_sat.velocity_up();
++	gps.vel_m_s = sqrtf(gps.vel_n_m_s * gps.vel_n_m_s + gps.vel_e_m_s * gps.vel_e_m_s);
++	gps.cog_rad = gps.vel_m_s > 0.1f ? atan2f(gps.vel_e_m_s, gps.vel_n_m_s) : NAN;
++	gps.vel_ned_valid = true;
++	gps.satellites_used = 10;
++	gps.heading = NAN;
++	gps.heading_offset = NAN;
++	gps.heading_accuracy = NAN;
++	_sensor_gps_pub.publish(gps);
++
++	// Keep the separate truth topic for simulation diagnostics.
++	vehicle_global_position_s global_position_groundtruth{};
+ #if defined(ENABLE_LOCKSTEP_SCHEDULER)
+-		global_position_groundtruth.timestamp_sample = time_us;
++	global_position_groundtruth.timestamp_sample = timestamp_sample;
+ #else
+-		global_position_groundtruth.timestamp_sample = hrt_absolute_time();
++	global_position_groundtruth.timestamp_sample = timestamp;
+ #endif
+-		global_position_groundtruth.lat = nav_sat.latitude_deg();
+-		global_position_groundtruth.lon = nav_sat.longitude_deg();
+-		global_position_groundtruth.alt = nav_sat.altitude();
+-		_gpos_ground_truth_pub.publish(global_position_groundtruth);
+-	}
++	global_position_groundtruth.lat = nav_sat.latitude_deg();
++	global_position_groundtruth.lon = nav_sat.longitude_deg();
++	global_position_groundtruth.alt = nav_sat.altitude();
++	_gpos_ground_truth_pub.publish(global_position_groundtruth);
+ 
+ 	pthread_mutex_unlock(&_node_mutex);
+ }
+diff --git a/src/modules/simulation/gz_bridge/GZBridge.hpp b/src/modules/simulation/gz_bridge/GZBridge.hpp
+index 6d2e267..a0ec406 100644
+--- a/src/modules/simulation/gz_bridge/GZBridge.hpp
++++ b/src/modules/simulation/gz_bridge/GZBridge.hpp
+@@ -56,6 +56,7 @@
+ #include <uORB/topics/vehicle_global_position.h>
+ #include <uORB/topics/vehicle_local_position.h>
+ #include <uORB/topics/sensor_baro.h>
++#include <uORB/topics/sensor_gps.h>
+ #include <uORB/topics/vehicle_odometry.h>
+ #include <uORB/topics/wheel_encoders.h>
+ 
+@@ -126,6 +127,7 @@ private:
+ 	uORB::Publication<vehicle_global_position_s>  _gpos_ground_truth_pub{ORB_ID(vehicle_global_position_groundtruth)};
+ 	uORB::Publication<vehicle_local_position_s>   _lpos_ground_truth_pub{ORB_ID(vehicle_local_position_groundtruth)};
+ 	uORB::PublicationMulti<sensor_baro_s> _sensor_baro_pub{ORB_ID(sensor_baro)};
++	uORB::PublicationMulti<sensor_gps_s> _sensor_gps_pub{ORB_ID(sensor_gps)};
+ 
+ 	uORB::PublicationMulti<sensor_accel_s> _sensor_accel_pub{ORB_ID(sensor_accel)};
+ 	uORB::PublicationMulti<sensor_gyro_s>  _sensor_gyro_pub{ORB_ID(sensor_gyro)};
+diff --git a/src/modules/simulation/sensor_mag_sim/SensorMagSim.cpp b/src/modules/simulation/sensor_mag_sim/SensorMagSim.cpp
+index ff5e5e3..1361d5b 100644
+--- a/src/modules/simulation/sensor_mag_sim/SensorMagSim.cpp
++++ b/src/modules/simulation/sensor_mag_sim/SensorMagSim.cpp
+@@ -130,7 +130,7 @@ void SensorMagSim::Run()
+ 		if (_vehicle_attitude_sub.update(&attitude)) {
+ 			Vector3f expected_field = Dcmf{Quatf{attitude.q}} .transpose() * _mag_earth_pred;
+ 
+-			expected_field += noiseGauss3f(0.02f, 0.02f, 0.03f);
++			expected_field += noiseGauss3f(0.005f, 0.005f, 0.005f);
+ 
+ 			_px4_mag.update(attitude.timestamp,
+ 					expected_field(0) + _sim_mag_offset_x.get(),
+diff --git a/boards/px4/fmu-v6c/f8hitl.px4board b/boards/px4/fmu-v6c/f8hitl.px4board
+new file mode 100644
+--- /dev/null
++++ b/boards/px4/fmu-v6c/f8hitl.px4board
+@@ -0,0 +1,4 @@
++# Inherits default; only for external HITL with simulated actuator outputs.
++CONFIG_MODULES_FIGURE8_TRAJECTORY=y
++CONFIG_MODULES_UXRCE_DDS_CLIENT=n
++CONFIG_MODULES_SIMULATION_PWM_OUT_SIM=y
+diff --git a/boards/px4/fmu-v6c/hitl.px4board b/boards/px4/fmu-v6c/hitl.px4board
+new file mode 100644
+--- /dev/null
++++ b/boards/px4/fmu-v6c/hitl.px4board
+@@ -0,0 +1,2 @@
++# Inherits fmu-v6c/default.px4board; external HITL requires simulated outputs.
++CONFIG_MODULES_SIMULATION_PWM_OUT_SIM=y
+diff --git a/boards/px4/fmu-v6c/onboard.px4board b/boards/px4/fmu-v6c/onboard.px4board
+new file mode 100644
+--- /dev/null
++++ b/boards/px4/fmu-v6c/onboard.px4board
+@@ -0,0 +1,4 @@
++# Inherits default. The onboard task uses uORB, so omit the unused DDS client
++# to recover FLASH space without removing sensors, RC or flight controllers.
++CONFIG_MODULES_FIGURE8_TRAJECTORY=y
++CONFIG_MODULES_UXRCE_DDS_CLIENT=n
+diff --git a/msg/BppsmcDebug.msg b/msg/BppsmcDebug.msg
+new file mode 100644
+--- /dev/null
++++ b/msg/BppsmcDebug.msg
+@@ -0,0 +1,17 @@
++## ET-BPPSMC algorithm holographic debug log (ULog only)
++##
++## NOTE:
++## - Field names must be strictly lower_snake_case (no uppercase).
++## - Absolute timestamps must be uint64 (microseconds) to avoid precision loss.
++
++uint64 timestamp                # [us] absolute timestamp since boot
++
++float32[3] rho_center           # [m] prescribed-performance tube center (rho)
++float32[3] sliding_surface      # [-] sliding surface S
++uint32[3] trigger_count         # [-] per-axis event trigger count
++
++float32[3] acceleration_sp      # [m/s^2] injected total acceleration setpoint
++
++float32[3] e0                   # [m] clipped initial error at last trigger
++uint64[3] t0                    # [us] absolute timestamp of last trigger
++
+diff --git a/msg/Figure8Status.msg b/msg/Figure8Status.msg
+new file mode 100644
+--- /dev/null
++++ b/msg/Figure8Status.msg
+@@ -0,0 +1,20 @@
++uint64 timestamp
++bool enabled                 # Owns the onboard experiment; use native PID outside an active task
++bool active                  # Actively generating OFFBOARD references
++uint8 stage
++uint8 STAGE_DISABLED = 0
++uint8 STAGE_WAITING = 1
++uint8 STAGE_READY = 2
++uint8 STAGE_TAKEOFF = 3
++uint8 STAGE_HOVER = 4
++uint8 STAGE_FIGURE8 = 5
++uint8 STAGE_RETURN_HOLD = 6
++uint8 STAGE_LANDING = 7
++uint8 STAGE_TOUCHDOWN = 8
++uint8 STAGE_COMPLETE = 9
++uint8 STAGE_ABORTED = 10
++uint8 controller             # MPC_CTRL_METHOD latched at start
++uint8 lap
++uint8 failure                # 0 none, 1 envelope, 2 tracking, 3 hover timeout, 4 landing timeout, 5 contact lost
++float32 stage_elapsed
++float32 tracking_error
+diff --git a/src/modules/figure8_trajectory/CMakeLists.txt b/src/modules/figure8_trajectory/CMakeLists.txt
+new file mode 100644
+--- /dev/null
++++ b/src/modules/figure8_trajectory/CMakeLists.txt
+@@ -0,0 +1,10 @@
++px4_add_module(
++	MODULE modules__figure8_trajectory
++	MAIN figure8_trajectory
++	SRCS
++		Figure8Trajectory.cpp
++		Figure8Trajectory.hpp
++		Figure8Mission.hpp
++	DEPENDS
++		px4_work_queue
++)
+diff --git a/src/modules/figure8_trajectory/Figure8Mission.hpp b/src/modules/figure8_trajectory/Figure8Mission.hpp
+new file mode 100644
+--- /dev/null
++++ b/src/modules/figure8_trajectory/Figure8Mission.hpp
+@@ -0,0 +1,259 @@
++#pragma once
++
++#include <cmath>
++#include <cstdint>
++
++namespace figure8
++{
++
++enum class Stage : uint8_t {
++	Disabled = 0, Waiting, Ready, Takeoff, Hover, Figure8, ReturnHold, Landing, Touchdown, Complete, Aborted
++};
++
++enum class Failure : uint8_t { None = 0, Envelope, Tracking, HoverTimeout, LandTimeout, ContactLost };
++
++struct Config {
++	float height{3.f};
++	float radius{3.f};
++	float period{60.f};
++	float takeoff_time{12.f};
++	float hover_time{5.f};
++	float land_time{18.f};
++	float landing_depth{0.3f};
++	float max_error{3.f};
++	int laps{1};
++
++	bool valid() const
++	{
++		return std::isfinite(height) && height >= 0.5f && height <= 10.f
++		       && std::isfinite(radius) && radius >= 0.2f && radius <= 10.f
++		       && std::isfinite(period) && period >= 20.f && period <= 300.f
++		       && std::isfinite(takeoff_time) && takeoff_time >= 5.f && takeoff_time <= 60.f
++		       && std::isfinite(hover_time) && hover_time >= 2.f && hover_time <= 60.f
++		       && std::isfinite(land_time) && land_time >= 8.f && land_time <= 60.f
++		       && std::isfinite(landing_depth) && landing_depth > 0.f && landing_depth <= 0.5f
++		       && std::isfinite(max_error) && max_error >= 0.5f && max_error <= 10.f
++		       && laps >= 1 && laps <= 20;
++	}
++};
++
++struct Reference {
++	float position[3] {};
++	float velocity[3] {};
++	float acceleration[3] {};
++	float yaw{0.f};
++};
++
++struct Sample {
++	float position[3] {};
++	float velocity[3] {};
++	bool landed{true};
++};
++
++inline void smooth_progress(float elapsed, float duration, float &s, float &ds, float &dds)
++{
++	const float u = fminf(1.f, fmaxf(0.f, elapsed / duration));
++	s = u * u * u * (10.f + u * (-15.f + 6.f * u));
++	ds = 30.f * u * u * (1.f - u) * (1.f - u) / duration;
++	dds = 60.f * u * (1.f - u) * (1.f - 2.f * u) / (duration * duration);
++}
++
++inline Reference bernoulli_reference(const float origin[3], float down, float radius,
++				     float theta, float omega, float alpha, float yaw)
++{
++	const float s = sinf(theta), c = cosf(theta);
++	const float s2 = s * s, c2 = c * c;
++	const float d = 1.f + s2, d2 = d * d, d3 = d2 * d;
++	const float dx = -radius * s * (2.f + c2) / d2;
++	const float dy = radius * (c2 - 2.f * s2) / d2;
++	const float ddx = -radius * c * (s2 * s2 - 12.f * s2 + 3.f) / d3;
++	const float ddy = radius * s * c * (6.f * s2 - 10.f) / d3;
++	Reference ref{};
++	ref.position[0] = origin[0] + radius * c / d;
++	ref.position[1] = origin[1] + radius * s * c / d;
++	ref.position[2] = down;
++	ref.velocity[0] = dx * omega;
++	ref.velocity[1] = dy * omega;
++	// Chain rule includes phase acceleration for the smooth mission clock.
++	ref.acceleration[0] = ddx * omega * omega + dx * alpha;
++	ref.acceleration[1] = ddy * omega * omega + dy * alpha;
++	ref.yaw = yaw;
++	return ref;
++}
++
++inline Reference figure8_reference(const float origin[3], const Config &c, float elapsed, float yaw)
++{
++	float s, ds, dds;
++	smooth_progress(elapsed, c.period, s, ds, dds);
++	constexpr float two_pi = 6.28318530718f;
++	return bernoulli_reference(origin, origin[2] - c.height, c.radius,
++				   two_pi * s - 0.25f * two_pi, two_pi * ds, two_pi * dds, yaw);
++}
++
++class Mission
++{
++public:
++	void start(const Config &config, const float origin[3], float yaw)
++	{
++		*this = Mission{};
++		_config = config;
++
++		for (int i = 0; i < 3; ++i) { _origin[i] = origin[i]; }
++
++		_yaw = yaw;
++		_stage = Stage::Takeoff;
++	}
++
++	void translate(const float delta[3], float delta_yaw)
++	{
++		for (int i = 0; i < 3; ++i) {
++			_origin[i] += delta[i];
++			_touchdown[i] += delta[i];
++		}
++
++		_yaw = atan2f(sinf(_yaw + delta_yaw), cosf(_yaw + delta_yaw));
++	}
++
++	Stage stage() const { return _stage; }
++	Failure failure() const { return _failure; }
++	bool airborne_seen() const { return _airborne_seen; }
++	int lap() const { return _lap; }
++	float stage_elapsed(float time) const { return time - _stage_start; }
++	float height(const Sample &s) const { return _origin[2] - s.position[2]; }
++	float error() const { return _error; }
++
++	Reference step(float time, const Sample &sample)
++	{
++		const float elapsed = stage_elapsed(time);
++		const float h = height(sample);
++		const float speed = norm(sample.velocity);
++
++		if (!sample.landed && h > 0.3f) { _airborne_seen = true; }
++
++		Reference ref{};
++
++		for (int i = 0; i < 3; ++i) { ref.position[i] = _origin[i]; }
++
++		ref.position[2] -= _config.height;
++		ref.yaw = _yaw;
++
++		if (h > _config.height + 2.f || h < -1.f
++		    || hypotf(sample.position[0] - _origin[0], sample.position[1] - _origin[1])
++		    > _config.radius + _config.max_error) {
++			abort(Failure::Envelope);
++			return ref;
++		}
++
++		switch (_stage) {
++		case Stage::Takeoff: {
++				float s, ds, dds;
++				smooth_progress(elapsed, _config.takeoff_time, s, ds, dds);
++				ref.position[2] = _origin[2] - _config.height * s;
++				ref.velocity[2] = -_config.height * ds;
++				ref.acceleration[2] = -_config.height * dds;
++
++				if (elapsed >= _config.takeoff_time) { transition(Stage::Hover, time); }
++
++				break;
++			}
++
++		case Stage::Hover:
++		case Stage::ReturnHold: {
++				const float delta[3] {sample.position[0] - ref.position[0], sample.position[1] - ref.position[1],
++						      sample.position[2] - ref.position[2]
++						     };
++				const bool stable = _airborne_seen && !sample.landed && norm(delta) <= 0.5f && speed <= 0.4f;
++
++				if (stable) {
++					if (_settled_since < 0.f) { _settled_since = time; }
++
++				} else { _settled_since = -1.f; }
++
++				if (elapsed >= _config.hover_time && _settled_since >= 0.f && time - _settled_since >= 2.f) {
++					transition(_stage == Stage::Hover ? Stage::Figure8 : Stage::Landing, time);
++
++				} else if (elapsed > _config.hover_time + 30.f) { abort(Failure::HoverTimeout); }
++
++				break;
++			}
++
++		case Stage::Figure8:
++			ref = figure8_reference(_origin, _config, elapsed, _yaw);
++
++			if (elapsed >= _config.period) {
++				if (_lap < _config.laps) { ++_lap; transition(Stage::Figure8, time); }
++
++				else { transition(Stage::ReturnHold, time); }
++			}
++
++			break;
++
++		case Stage::Landing: {
++				// A downward reference through contact is needed by PX4's land detector.
++				const float distance = _config.height + _config.landing_depth;
++				const float terminal_speed = fmaxf(0.35f, 2.f * distance / _config.land_time);
++				const float ramp = 2.f * distance / terminal_speed;
++				const float u = fminf(1.f, fmaxf(0.f, elapsed / ramp));
++				ref.position[2] += distance * (2.f * u * u * u - u * u * u * u)
++						   + terminal_speed * fmaxf(0.f, elapsed - ramp);
++				ref.velocity[2] = terminal_speed * (3.f * u * u - 2.f * u * u * u);
++				ref.acceleration[2] = terminal_speed * 6.f * u * (1.f - u) / ramp;
++
++				if (_airborne_seen && sample.landed && fabsf(h) < 0.5f && speed < 0.3f) {
++					if (_landed_since < 0.f) { _landed_since = time; }
++
++					if (time - _landed_since >= 1.f) {
++						for (int i = 0; i < 3; ++i) { _touchdown[i] = sample.position[i]; }
++
++						transition(Stage::Touchdown, time);
++					}
++
++				} else { _landed_since = -1.f; }
++
++				if (elapsed > _config.land_time + 30.f) { abort(Failure::LandTimeout); }
++
++				break;
++			}
++
++		case Stage::Touchdown:
++			for (int i = 0; i < 3; ++i) { ref.position[i] = _touchdown[i]; }
++
++			if (!sample.landed) { abort(Failure::ContactLost); }
++
++			else if (elapsed > 10.f) { abort(Failure::LandTimeout); }
++
++			break;
++
++		default:
++			break;
++		}
++
++		const float delta[3] {sample.position[0] - ref.position[0], sample.position[1] - ref.position[1],
++				      sample.position[2] - ref.position[2]
++				     };
++		_error = norm(delta);
++
++		if (_error > _config.max_error) { abort(Failure::Tracking); }
++
++		return ref;
++	}
++
++private:
++	static float norm(const float v[3]) { return sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); }
++	void abort(Failure failure) { _stage = Stage::Aborted; _failure = failure; }
++	void transition(Stage stage, float time) { _stage = stage; _stage_start = time; _settled_since = -1.f; }
++	Config _config{};
++	Stage _stage{Stage::Waiting};
++	Failure _failure{Failure::None};
++	float _origin[3] {};
++	float _touchdown[3] {};
++	float _yaw{0.f};
++	float _stage_start{0.f};
++	float _settled_since{-1.f};
++	float _landed_since{-1.f};
++	float _error{0.f};
++	int _lap{1};
++	bool _airborne_seen{false};
++};
++
++} // namespace figure8
+diff --git a/src/modules/figure8_trajectory/Figure8Trajectory.cpp b/src/modules/figure8_trajectory/Figure8Trajectory.cpp
+new file mode 100644
+--- /dev/null
++++ b/src/modules/figure8_trajectory/Figure8Trajectory.cpp
+@@ -0,0 +1,357 @@
++#include "Figure8Trajectory.hpp"
++
++#include <cmath>
++
++Figure8Trajectory::Figure8Trajectory() :
++	ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers)
++{
++}
++
++bool Figure8Trajectory::init()
++{
++	_enabled_at_start = _param_enable.get() == 1;
++	ScheduleOnInterval(20_ms);
++	return true;
++}
++
++bool Figure8Trajectory::inputs_valid(hrt_abstime now) const
++{
++	return _position.timestamp != 0 && now < _position.timestamp + 500_ms
++	       && _position.xy_valid && _position.z_valid && _position.v_xy_valid && _position.v_z_valid
++	       // heading_good_for_control requires in-air final mag alignment in v1.15.
++	       // Commander checks yaw health for arming/mode entry; do not block ground preparation on that flag.
++	       && PX4_ISFINITE(_position.x) && PX4_ISFINITE(_position.y) && PX4_ISFINITE(_position.z)
++	       && PX4_ISFINITE(_position.vx) && PX4_ISFINITE(_position.vy) && PX4_ISFINITE(_position.vz)
++	       && PX4_ISFINITE(_position.heading)
++	       && _status.timestamp != 0 && now < _status.timestamp + 2_s && !_status.failsafe
++	       && _status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
++	       && _land.timestamp != 0 && now < _land.timestamp + 2_s
++	       && _manual.valid && _manual.timestamp != 0 && now < _manual.timestamp + 500_ms
++	       && !_armed.manual_lockdown && !_armed.force_failsafe;
++}
++
++bool Figure8Trajectory::read_config()
++{
++	_config.height = _param_height.get();
++	_config.radius = _param_radius.get();
++	_config.period = _param_period.get();
++	_config.laps = _param_laps.get();
++	_config.takeoff_time = _param_takeoff_time.get();
++	_config.hover_time = _param_hover_time.get();
++	_config.land_time = _param_land_time.get();
++	_config.landing_depth = _param_landing_depth.get();
++	_config.max_error = _param_max_error.get();
++
++	if (!_config.valid()) { return false; }
++
++	// Conservative bounds for the quintic phase and analytic feedforward.
++	const float omega = 11.780973f / _config.period;
++	const float alpha = 36.276f / (_config.period * _config.period);
++	// Bernoulli phase derivatives satisfy |r'| <= a and |r''| <= 3a.
++	const float vxy = _config.radius * omega;
++	const float axy = _config.radius * (alpha + 3.f * omega * omega);
++	const float vup = 1.875f * _config.height / _config.takeoff_time;
++	const float vdown = fmaxf(0.35f, 2.f * (_config.height + _config.landing_depth) / _config.land_time);
++	return vxy <= _param_max_vxy.get() && vup <= _param_max_up.get() && vdown <= _param_max_down.get()
++	       && axy <= _param_max_acc.get() && (_param_method.get() == 0 || axy <= _param_bpp_acc.get());
++}
++
++void Figure8Trajectory::publish_mode(hrt_abstime now)
++{
++	offboard_control_mode_s mode{};
++	mode.timestamp = now;
++	mode.position = true;
++	_mode_pub.publish(mode);
++}
++
++void Figure8Trajectory::publish_status(hrt_abstime now)
++{
++	figure8_status_s task{};
++	task.timestamp = now;
++	// Latch this policy for the module's lifetime, including abort/stop in flight.
++	task.enabled = _enabled_at_start;
++	task.active = active();
++	task.stage = static_cast<uint8_t>(_stage);
++	task.controller = _controller;
++	task.lap = _mission.lap();
++	task.failure = static_cast<uint8_t>(_mission.failure());
++	task.tracking_error = _mission.error();
++	task.stage_elapsed = _start_time ? _mission.stage_elapsed((now - _start_time) * 1e-6f) : 0.f;
++	_task_status_pub.publish(task);
++}
++
++void Figure8Trajectory::send_command(uint32_t command, float param1, float param2)
++{
++	vehicle_command_s cmd{};
++	cmd.timestamp = hrt_absolute_time();
++	cmd.command = command;
++	cmd.param1 = param1;
++	cmd.param2 = param2;
++	cmd.target_system = _status.system_id;
++	cmd.target_component = _status.component_id;
++	cmd.source_system = _status.system_id;
++	cmd.source_component = _status.component_id;
++	cmd.from_external = false;
++	_command_pub.publish(cmd);
++}
++
++void Figure8Trajectory::abort_task(const char *reason, bool request_land)
++{
++	_stage = figure8::Stage::Aborted;
++	_armed_on_ground = false;
++	mavlink_log_critical(&_mavlink_log_pub, "Figure8 aborted: %s\t", reason);
++
++	if (request_land && _status.arming_state == vehicle_status_s::ARMING_STATE_ARMED
++	    && _status.nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD && !_armed.manual_lockdown) {
++		// This is a normal PX4 landing request, never a forced disarm.
++		send_command(vehicle_command_s::VEHICLE_CMD_NAV_LAND, 0.f);
++	}
++}
++
++void Figure8Trajectory::adjust_origin()
++{
++	float delta[3] {};
++	float heading_delta = 0.f;
++
++	if (_xy_reset != _position.xy_reset_counter) {
++		delta[0] = _position.delta_xy[0]; delta[1] = _position.delta_xy[1];
++	}
++
++	if (_z_reset != _position.z_reset_counter) { delta[2] = _position.delta_z; }
++
++	if (_heading_reset != _position.heading_reset_counter) { heading_delta = _position.delta_heading; }
++
++	for (int i = 0; i < 3; ++i) { _origin[i] += delta[i]; }
++
++	_yaw = atan2f(sinf(_yaw + heading_delta), cosf(_yaw + heading_delta));
++
++	if (active()) { _mission.translate(delta, heading_delta); }
++
++	_xy_reset = _position.xy_reset_counter;
++	_z_reset = _position.z_reset_counter;
++	_heading_reset = _position.heading_reset_counter;
++}
++
++void Figure8Trajectory::Run()
++{
++	const hrt_abstime now = hrt_absolute_time();
++	_position_sub.update(&_position);
++	_land_sub.update(&_land);
++	_status_sub.update(&_status);
++	_manual_sub.update(&_manual);
++	_armed_sub.update(&_armed);
++	const bool armed = _status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
++	const bool offboard = _status.nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
++
++	if (_param_sub.updated()) {
++		parameter_update_s update;
++		_param_sub.copy(&update);
++		updateParams();
++	}
++
++	if (should_exit()) {
++		if (active()) { abort_task("module stopped", true); }
++
++		_stage = figure8::Stage::Disabled;
++		publish_status(now);
++		ScheduleClear();
++		exit_and_cleanup();
++		return;
++	}
++
++	if (active()) {
++		if (!offboard) { abort_task("pilot or failsafe left OFFBOARD", false); }
++
++		else if (!armed) {
++			if (_mission.airborne_seen() && _land.landed
++			    && (_stage == figure8::Stage::Landing || _stage == figure8::Stage::Touchdown)) {
++				_stage = figure8::Stage::Complete;
++				mavlink_log_info(&_mavlink_log_pub, "Figure8 complete: landed and disarmed\t");
++
++			} else { abort_task("disarmed", false); }
++
++		} else if (!inputs_valid(now) || _param_enable.get() != 1 || now - _last_run > 500_ms) {
++			abort_task("input lost, disabled, Kill or scheduling timeout", true);
++		}
++	}
++
++	_last_run = now;
++
++	if (!_enabled_at_start) {
++		_stage = figure8::Stage::Disabled;
++
++	} else if (!active() && _param_enable.get() != 1) {
++		_stage = figure8::Stage::Disabled;
++
++	} else if (!active() && !armed && !offboard && _land.landed && inputs_valid(now)) {
++		if (read_config()) {
++			if (_stage != figure8::Stage::Ready) {
++				_stage = figure8::Stage::Ready;
++				_ready_since = now;
++				mavlink_log_info(&_mavlink_log_pub, "Figure8 ready: arm manually, then select OFFBOARD\t");
++			}
++
++			_origin[0] = _position.x; _origin[1] = _position.y; _origin[2] = _position.z;
++			_yaw = _position.heading;
++			_xy_reset = _position.xy_reset_counter;
++			_z_reset = _position.z_reset_counter;
++			_heading_reset = _position.heading_reset_counter;
++			_controller = _param_method.get();
++			_armed_on_ground = false;
++
++		} else {
++			if (_stage != figure8::Stage::Waiting) {
++				mavlink_log_critical(&_mavlink_log_pub, "Figure8: invalid parameters or trajectory exceeds limits\t");
++			}
++
++			_stage = figure8::Stage::Waiting;
++		}
++	}
++
++	if (_stage == figure8::Stage::Ready) {
++		if (!inputs_valid(now) || _param_enable.get() != 1) {
++			if (armed || offboard) { abort_task("not ready at start", offboard); }
++
++			else { _stage = figure8::Stage::Waiting; }
++
++		} else {
++			adjust_origin();
++			const float height = _origin[2] - _position.z;
++
++			if (armed && !offboard && fabsf(height) < 0.5f
++			    && hypotf(_position.vx, _position.vy) < 0.3f && fabsf(_position.vz) < 0.3f) {
++				_armed_on_ground = true;
++			}
++
++			if (fabsf(height) >= 0.5f) { abort_task("start must be on the ground", offboard); }
++
++			else if (armed && offboard) {
++				if (!_armed_on_ground || now - _ready_since < 1_s) {
++					abort_task("arm manually before entering OFFBOARD", true);
++
++				} else {
++					_mission.start(_config, _origin, _yaw);
++					_start_time = now;
++					_stage = figure8::Stage::Takeoff;
++					mavlink_log_info(&_mavlink_log_pub, "Figure8 started: %s\t", _controller ? "BPPSMC" : "PID");
++				}
++			}
++
++			if (_stage == figure8::Stage::Ready) { publish_mode(now); }
++		}
++	}
++
++	if (active()) {
++		adjust_origin();
++		figure8::Sample sample{{_position.x, _position.y, _position.z}, {_position.vx, _position.vy, _position.vz}, _land.landed};
++		const auto previous = _stage;
++		const auto ref = _mission.step((now - _start_time) * 1e-6f, sample);
++		_stage = _mission.stage();
++
++		if (_stage == figure8::Stage::Aborted) {
++			abort_task("envelope, tracking, contact or stage timeout", true);
++
++		} else {
++			if (_stage != previous) { mavlink_log_info(&_mavlink_log_pub, "Figure8: %s\t", stage_name(_stage)); }
++
++			// Publish ownership before the setpoint; never publish trajectories in manual modes.
++			publish_status(now);
++			trajectory_setpoint_s setpoint{};
++			setpoint.timestamp = now;
++
++			for (int i = 0; i < 3; ++i) {
++				setpoint.position[i] = ref.position[i];
++				setpoint.velocity[i] = ref.velocity[i];
++				setpoint.acceleration[i] = ref.acceleration[i];
++				setpoint.jerk[i] = NAN;
++			}
++
++			setpoint.yaw = ref.yaw;
++			setpoint.yawspeed = 0.f;
++			_trajectory_pub.publish(setpoint);
++			publish_mode(now);
++
++			if (_stage == figure8::Stage::Touchdown && _land.landed && now - _last_disarm >= 1_s) {
++				send_command(vehicle_command_s::VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.f);
++				_last_disarm = now;
++			}
++		}
++	}
++
++	publish_status(now);
++}
++
++const char *Figure8Trajectory::stage_name(figure8::Stage stage)
++{
++	switch (stage) {
++	case figure8::Stage::Disabled: return "disabled";
++
++	case figure8::Stage::Waiting: return "waiting";
++
++	case figure8::Stage::Ready: return "ready";
++
++	case figure8::Stage::Takeoff: return "takeoff";
++
++	case figure8::Stage::Hover: return "hover";
++
++	case figure8::Stage::Figure8: return "figure8";
++
++	case figure8::Stage::ReturnHold: return "return_hold";
++
++	case figure8::Stage::Landing: return "landing";
++
++	case figure8::Stage::Touchdown: return "touchdown";
++
++	case figure8::Stage::Complete: return "complete";
++
++	case figure8::Stage::Aborted: return "aborted";
++	}
++
++	return "unknown";
++}
++
++int Figure8Trajectory::print_status()
++{
++	PX4_INFO("stage: %s; enabled at start: %s", stage_name(_stage), _enabled_at_start ? "yes" : "no");
++	PX4_INFO("task controller: %s; lap: %d; error: %.3f m", _controller ? "BPPSMC" : "PID", _mission.lap(),
++		 (double)_mission.error());
++	return 0;
++}
++
++int Figure8Trajectory::task_spawn(int argc, char *argv[])
++{
++	auto *instance = new Figure8Trajectory();
++
++	if (instance) {
++		_object.store(instance);
++		_task_id = task_id_is_work_queue;
++
++		if (instance->init()) { return PX4_OK; }
++	}
++
++	delete instance;
++	_object.store(nullptr);
++	_task_id = -1;
++	return PX4_ERROR;
++}
++
++int Figure8Trajectory::custom_command(int argc, char *argv[])
++{
++	return print_usage("unknown command");
++}
++
++int Figure8Trajectory::print_usage(const char *reason)
++{
++	if (reason) { PX4_WARN("%s", reason); }
++
++	PRINT_MODULE_DESCRIPTION("Onboard figure-eight references for PID/BPPSMC. Set F8_ENABLE=1 and reboot. Arm manually, then select OFFBOARD on the ground.");
++	PRINT_MODULE_USAGE_NAME("figure8_trajectory", "controller");
++	PRINT_MODULE_USAGE_COMMAND("start");
++	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
++	return 0;
++}
++
++extern "C" __EXPORT int figure8_trajectory_main(int argc, char *argv[])
++{
++	return Figure8Trajectory::main(argc, argv);
++}
+diff --git a/src/modules/figure8_trajectory/Figure8Trajectory.hpp b/src/modules/figure8_trajectory/Figure8Trajectory.hpp
+new file mode 100644
+--- /dev/null
++++ b/src/modules/figure8_trajectory/Figure8Trajectory.hpp
+@@ -0,0 +1,95 @@
++#pragma once
++
++#include "Figure8Mission.hpp"
++
++#include <drivers/drv_hrt.h>
++#include <lib/systemlib/mavlink_log.h>
++#include <px4_platform_common/module.h>
++#include <px4_platform_common/module_params.h>
++#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
++#include <uORB/Publication.hpp>
++#include <uORB/Subscription.hpp>
++#include <uORB/topics/actuator_armed.h>
++#include <uORB/topics/figure8_status.h>
++#include <uORB/topics/manual_control_setpoint.h>
++#include <uORB/topics/offboard_control_mode.h>
++#include <uORB/topics/parameter_update.h>
++#include <uORB/topics/trajectory_setpoint.h>
++#include <uORB/topics/vehicle_command.h>
++#include <uORB/topics/vehicle_land_detected.h>
++#include <uORB/topics/vehicle_local_position.h>
++#include <uORB/topics/vehicle_status.h>
++
++using namespace time_literals;
++
++class Figure8Trajectory : public ModuleBase<Figure8Trajectory>, public ModuleParams, public px4::ScheduledWorkItem
++{
++public:
++	Figure8Trajectory();
++	static int task_spawn(int argc, char *argv[]);
++	static int custom_command(int argc, char *argv[]);
++	static int print_usage(const char *reason = nullptr);
++	int print_status() override;
++	bool init();
++
++private:
++	void Run() override;
++	bool inputs_valid(hrt_abstime now) const;
++	bool read_config();
++	void abort_task(const char *reason, bool request_land);
++	void publish_status(hrt_abstime now);
++	void publish_mode(hrt_abstime now);
++	void send_command(uint32_t command, float param1, float param2 = 0.f);
++	void adjust_origin();
++	static const char *stage_name(figure8::Stage stage);
++	bool active() const { return _stage >= figure8::Stage::Takeoff && _stage <= figure8::Stage::Touchdown; }
++
++	uORB::Subscription _position_sub{ORB_ID(vehicle_local_position)};
++	uORB::Subscription _land_sub{ORB_ID(vehicle_land_detected)};
++	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
++	uORB::Subscription _manual_sub{ORB_ID(manual_control_setpoint)};
++	uORB::Subscription _armed_sub{ORB_ID(actuator_armed)};
++	uORB::Subscription _param_sub{ORB_ID(parameter_update)};
++	uORB::Publication<trajectory_setpoint_s> _trajectory_pub{ORB_ID(trajectory_setpoint)};
++	uORB::Publication<offboard_control_mode_s> _mode_pub{ORB_ID(offboard_control_mode)};
++	uORB::Publication<figure8_status_s> _task_status_pub{ORB_ID(figure8_status)};
++	uORB::Publication<vehicle_command_s> _command_pub{ORB_ID(vehicle_command)};
++	vehicle_local_position_s _position{};
++	vehicle_land_detected_s _land{};
++	vehicle_status_s _status{};
++	manual_control_setpoint_s _manual{};
++	actuator_armed_s _armed{};
++	orb_advert_t _mavlink_log_pub{nullptr};
++	figure8::Config _config{};
++	figure8::Mission _mission{};
++	figure8::Stage _stage{figure8::Stage::Waiting};
++	hrt_abstime _ready_since{0};
++	hrt_abstime _start_time{0};
++	hrt_abstime _last_run{0};
++	hrt_abstime _last_disarm{0};
++	float _origin[3] {};
++	float _yaw{0.f};
++	uint8_t _xy_reset{0}, _z_reset{0}, _heading_reset{0};
++	uint8_t _controller{0};
++	bool _enabled_at_start{false};
++	bool _armed_on_ground{false};
++
++	DEFINE_PARAMETERS(
++		(ParamInt<px4::params::F8_ENABLE>) _param_enable,
++		(ParamFloat<px4::params::F8_HEIGHT>) _param_height,
++		(ParamFloat<px4::params::F8_RADIUS>) _param_radius,
++		(ParamFloat<px4::params::F8_PERIOD>) _param_period,
++		(ParamInt<px4::params::F8_LAPS>) _param_laps,
++		(ParamFloat<px4::params::F8_TKO_TIME>) _param_takeoff_time,
++		(ParamFloat<px4::params::F8_HOV_TIME>) _param_hover_time,
++		(ParamFloat<px4::params::F8_LND_TIME>) _param_land_time,
++		(ParamFloat<px4::params::F8_LND_DEPTH>) _param_landing_depth,
++		(ParamFloat<px4::params::F8_ERR_MAX>) _param_max_error,
++		(ParamInt<px4::params::MPC_CTRL_METHOD>) _param_method,
++		(ParamFloat<px4::params::MPC_XY_VEL_MAX>) _param_max_vxy,
++		(ParamFloat<px4::params::MPC_Z_VEL_MAX_UP>) _param_max_up,
++		(ParamFloat<px4::params::MPC_Z_VEL_MAX_DN>) _param_max_down,
++		(ParamFloat<px4::params::MPC_ACC_HOR_MAX>) _param_max_acc,
++		(ParamFloat<px4::params::BPP_ACC_XY>) _param_bpp_acc
++	)
++};
+diff --git a/src/modules/figure8_trajectory/Kconfig b/src/modules/figure8_trajectory/Kconfig
+new file mode 100644
+--- /dev/null
++++ b/src/modules/figure8_trajectory/Kconfig
+@@ -0,0 +1,5 @@
++menuconfig MODULES_FIGURE8_TRAJECTORY
++	bool "figure8_trajectory"
++	default n
++	---help---
++		Onboard OFFBOARD takeoff, figure-eight and landing for PID/BPPSMC comparison.
+diff --git a/src/modules/figure8_trajectory/trajectory_params.c b/src/modules/figure8_trajectory/trajectory_params.c
+new file mode 100644
+--- /dev/null
++++ b/src/modules/figure8_trajectory/trajectory_params.c
+@@ -0,0 +1,126 @@
++/**
++ * Enable onboard figure-eight experiment
++ *
++ * Reboot after changing. Requires manual input and a valid local position.
++ * Arm in a manual control mode, then select OFFBOARD on the ground.
++ * While enabled, native PID is used outside an active onboard task.
++ * Do not run external OFFBOARD setpoint publishers at the same time.
++ *
++ * @boolean
++ * @reboot_required true
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_INT32(F8_ENABLE, 0);
++
++/**
++ * Takeoff height above the starting ground
++ *
++ * @unit m
++ * @min 0.5
++ * @max 10
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_HEIGHT, 3.0f);
++
++/**
++ * Bernoulli lemniscate scale a
++ *
++ * North extent is +/-a; east extent is +/-a/(2*sqrt(2)).
++ * Matches the unscaled curve in BPPSMC-reproducible.
++ *
++ * @unit m
++ * @min 0.2
++ * @max 10
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_RADIUS, 3.0f);
++
++/**
++ * Duration of each figure-eight lap
++ *
++ * Smooth quintic phase, with zero velocity/acceleration at each lap boundary.
++ *
++ * @unit s
++ * @min 20
++ * @max 300
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_PERIOD, 60.0f);
++
++/**
++ * Number of figure-eight laps
++ *
++ * @min 1
++ * @max 20
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_INT32(F8_LAPS, 1);
++
++/**
++ * Smooth takeoff reference duration
++ *
++ * @unit s
++ * @min 5
++ * @max 60
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_TKO_TIME, 12.0f);
++
++/**
++ * Minimum hover before and after the figure-eight
++ *
++ * Also waits for position error <= 0.5 m and speed <= 0.4 m/s for 2 s.
++ * Aborts if not settled within another 30 s.
++ *
++ * @unit s
++ * @min 2
++ * @max 60
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_HOV_TIME, 5.0f);
++
++/**
++ * Landing ramp duration limit
++ *
++ * Descending reference continues through contact until landing is confirmed.
++ * Aborts after this duration plus 30 s if landing is not confirmed.
++ *
++ * @unit s
++ * @min 8
++ * @max 60
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_LND_TIME, 18.0f);
++
++/**
++ * Landing reference depth below starting ground
++ *
++ * For a level takeoff/landing surface. Not a terrain clearance measurement.
++ *
++ * @unit m
++ * @min 0.05
++ * @max 0.5
++ * @decimal 2
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_LND_DEPTH, 0.3f);
++
++/**
++ * Maximum three-dimensional tracking error
++ *
++ * Exceeding this value aborts the onboard task and requests PX4 Land.
++ * Native PID is used for the abort/RC takeover path.
++ *
++ * @unit m
++ * @min 0.5
++ * @max 10
++ * @decimal 1
++ * @group Onboard Figure8
++ */
++PARAM_DEFINE_FLOAT(F8_ERR_MAX, 3.0f);
+diff --git a/src/modules/mc_pos_control/PositionControl/etimr_gains.h b/src/modules/mc_pos_control/PositionControl/etimr_gains.h
+new file mode 100644
+--- /dev/null
++++ b/src/modules/mc_pos_control/PositionControl/etimr_gains.h
+@@ -0,0 +1,30 @@
++// AUTO-GENERATED by design_etimr_gains.py  (v2: 2nd-order + IM, measured vel, no filter)
++// design: DT=0.008s OMEGA=0.5 POLES_K={'x': [-0.32, -0.45, -0.58, -0.78, -1], 'y': [-0.32, -0.45, -0.58, -0.78, -1], 'z': [-0.35, -0.5, -0.65, -0.85, -1.05]} DELTA=0.05
++// u=-Kp pe -Kv ve -Kxi·xi;  xi <- Phi_d xi + N_d y_held
++#pragma once
++namespace etimr {
++static constexpr int XI_DIM = 3;
++static constexpr float DT = 0.008f;
++static constexpr float ALPHA = 0.25f;
++static constexpr float THETA = 0.15f;
++static constexpr float DELTA = 0.05f;
++static constexpr float W0 = 0.5f;
++// --- axis x ---
++static constexpr float Kp_x = 3.52360000e+00f;
++static constexpr float Kv_x = 3.03000000e+00f;
++static constexpr float Kxi_x[1][3] = {{6.51456000e-02f,-2.71566400e-01f,1.40528800e+00f}};
++static constexpr float Phi_d_x[3][3] = {{1.00000000e+00f,7.99997867e-03f,3.19999573e-05f}, {0.00000000e+00f,9.99992000e-01f,7.99997867e-03f}, {0.00000000e+00f,-1.99999467e-03f,9.99992000e-01f}};
++static constexpr float N_d_x[3][1] = {{8.53332651e-08f}, {3.19999573e-05f}, {7.99997867e-03f}};
++// --- axis y ---
++static constexpr float Kp_y = 3.52360000e+00f;
++static constexpr float Kv_y = 3.03000000e+00f;
++static constexpr float Kxi_y[1][3] = {{6.51456000e-02f,-2.71566400e-01f,1.40528800e+00f}};
++static constexpr float Phi_d_y[3][3] = {{1.00000000e+00f,7.99997867e-03f,3.19999573e-05f}, {0.00000000e+00f,9.99992000e-01f,7.99997867e-03f}, {0.00000000e+00f,-1.99999467e-03f,9.99992000e-01f}};
++static constexpr float N_d_y[3][1] = {{8.53332651e-08f}, {3.19999573e-05f}, {7.99997867e-03f}};
++// --- axis z ---
++static constexpr float Kp_z = 4.22000000e+00f;
++static constexpr float Kv_z = 3.20000000e+00f;
++static constexpr float Kxi_z[1][3] = {{1.01521875e-01f,-1.89581250e-01f,1.98475000e+00f}};
++static constexpr float Phi_d_z[3][3] = {{1.00000000e+00f,7.99997867e-03f,3.19999573e-05f}, {0.00000000e+00f,9.99992000e-01f,7.99997867e-03f}, {0.00000000e+00f,-1.99999467e-03f,9.99992000e-01f}};
++static constexpr float N_d_z[3][1] = {{8.53332651e-08f}, {3.19999573e-05f}, {7.99997867e-03f}};
++}  // namespace etimr
+diff --git a/src/modules/mc_pos_control/bppsmc_params.c b/src/modules/mc_pos_control/bppsmc_params.c
+new file mode 100644
+--- /dev/null
++++ b/src/modules/mc_pos_control/bppsmc_params.c
+@@ -0,0 +1,289 @@
++/**
++ * 多旋翼位置控制器类型
++ *
++ * 选择 PX4 原生串级位置 P / 速度 PID 控制器，或 ET-BPPSMC 加速度控制器。
++ * 仅在解除武装后应用。姿态和角速度控制器仍为 PX4 原生控制器。
++ *
++ * @value 0 PX4 原生 PID
++ * @value 1 ET-BPPSMC
++ * @min 0
++ * @max 1
++ * @group BPPSMC
++ */
++PARAM_DEFINE_INT32(MPC_CTRL_METHOD, 0);
++
++/**
++ * 水平预设性能函数加速度参数
++ *
++ * 用于设置最速性能函数形状，不是控制器输出限幅。仅在解除武装后应用，X/Y 轴共用此值。
++ * @unit m/s^2
++ * @min 0.05
++ * @max 5
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_AMAX_XY, 0.72f);
++
++/**
++ * 垂直预设性能函数加速度参数
++ *
++ * 仅在解除武装后应用。
++ * @unit m/s^2
++ * @min 0.05
++ * @max 5
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_AMAX_Z, 0.90f);
++
++/**
++ * 水平误差漏斗最小半宽
++ *
++ * 实际半宽为 max(BPP_DELTA * 初始误差, 此参数值)。仅在解除武装后应用，X/Y 轴共用此值。
++ * @unit m
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_BAND_XY, 0.75f);
++
++/**
++ * 垂直误差漏斗最小半宽
++ *
++ * 仅在解除武装后应用。
++ * @unit m
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_BAND_Z, 0.75f);
++
++/**
++ * 初始误差漏斗半宽比例
++ *
++ * 仅在解除武装后应用。
++ * @min 0.01
++ * @max 1
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_DELTA, 0.10f);
++
++/**
++ * 水平事件触发阈值比例
++ *
++ * 触发阈值为此参数乘以漏斗半宽。仅在解除武装后应用，X/Y 轴共用此值。
++ * @min 0.05
++ * @max 0.99
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_TRIG_XY, 0.76f);
++
++/**
++ * 垂直事件触发阈值比例
++ *
++ * 仅在解除武装后应用。
++ * @min 0.05
++ * @max 0.99
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_TRIG_Z, 0.95f);
++
++/**
++ * 水平滑模面增益
++ *
++ * 仅在解除武装后应用，X/Y 轴共用此值。
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_KS_XY, 1.40f);
++
++/**
++ * 垂直滑模面增益
++ *
++ * 仅在解除武装后应用。
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_KS_Z, 1.75f);
++
++/**
++ * 水平线性趋近增益
++ *
++ * 仅在解除武装后应用，X/Y 轴共用此值。
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_K0_XY, 1.20f);
++
++/**
++ * 垂直线性趋近增益
++ *
++ * 仅在解除武装后应用。
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_K0_Z, 1.80f);
++
++/**
++ * 水平切换增益
++ *
++ * 乘以 tanh(S / BPP_PHI_XY)。仅在解除武装后应用，X/Y 轴共用此值。
++ * @min 0
++ * @max 5
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_K1_XY, 0.20f);
++
++/**
++ * 垂直切换增益
++ *
++ * 仅在解除武装后应用。
++ * @min 0
++ * @max 5
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_K1_Z, 0.35f);
++
++/**
++ * 水平 tanh 边界层宽度
++ *
++ * 仅在解除武装后应用，X/Y 轴共用此值。
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_PHI_XY, 1.50f);
++
++/**
++ * 垂直 tanh 边界层宽度
++ *
++ * 仅在解除武装后应用。
++ * @min 0.05
++ * @max 10
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_PHI_Z, 1.20f);
++
++/**
++ * 预设趋近时间
++ *
++ * 仅在解除武装后应用。
++ * @unit s
++ * @min 0.1
++ * @max 20
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_T_PRE, 2.f);
++
++/**
++ * 趋近阶段容差
++ *
++ * 仅在解除武装后应用。
++ * @min 0.001
++ * @max 1
++ * @decimal 3
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_EPS_PRE, 0.1f);
++
++/**
++ * 预设滑动时间
++ *
++ * 仅在解除武装后应用。
++ * @unit s
++ * @min 0.1
++ * @max 20
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_T_SLIDE, 2.f);
++
++/**
++ * 滑动阶段容差
++ *
++ * 仅在解除武装后应用。
++ * @min 0.001
++ * @max 1
++ * @decimal 3
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_EPS_SLIDE, 0.1f);
++
++/**
++ * 事件锚点误差最小值
++ *
++ * 仅在解除武装后应用。
++ * @unit m
++ * @min 0.001
++ * @max 1
++ * @decimal 3
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_E0_MIN, 0.05f);
++
++/**
++ * 触发事件所需的最小校正加速度
++ *
++ * 仅在解除武装后应用。
++ * @unit m/s^2
++ * @min 0.001
++ * @max 1
++ * @decimal 3
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_ACC_FLOOR, 0.05f);
++
++/**
++ * 起飞阶段首次垂直事件触发阈值
++ *
++ * 此值为漏斗半宽的比例。仅在解除武装后应用。
++ * @min 0.05
++ * @max 0.99
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_TRIG_RAMP, 0.30f);
++
++/**
++ * BPPSMC 水平输出加速度限幅
++ *
++ * 进入 PX4 原生推力映射前，北东地坐标系各水平轴的绝对加速度限值。
++ * 仅在解除武装后应用，X/Y 轴共用此值。
++ * @unit m/s^2
++ * @min 0.1
++ * @max 15
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_ACC_XY, 6.f);
++
++/**
++ * BPPSMC 垂直输出加速度限幅
++ *
++ * 进入 PX4 原生推力映射前，北东地坐标系垂直轴的绝对加速度限值。
++ * 仅在解除武装后应用。
++ * @unit m/s^2
++ * @min 0.1
++ * @max 15
++ * @decimal 2
++ * @group BPPSMC
++ */
++PARAM_DEFINE_FLOAT(BPP_ACC_Z, 10.f);

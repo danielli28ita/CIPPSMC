@@ -1,0 +1,128 @@
+{
+  "target": "px4_fmu-v6c_onboard",
+  "baseline": "99c40407ffd7ac184e2d7b4b293f36f10fe561ef",
+  "overlay_files": {
+    "boards/px4/fmu-v6c/f8hitl.px4board": {
+      "sha256": "3a241d2a17b963523ed03e71e89ab03f54a77648ce6d32acb7e61be01632c16e",
+      "baseline_sha256": null
+    },
+    "boards/px4/fmu-v6c/hitl.px4board": {
+      "sha256": "0ae3527f8c1f2d120c02384730cfae6586f8f5b62f06e1f2e143e94b90dc930b",
+      "baseline_sha256": null
+    },
+    "boards/px4/fmu-v6c/onboard.px4board": {
+      "sha256": "dc7388d4193153a103381433cfe84e5a7818ba1b3467901597a1efbbe3b5a1f0",
+      "baseline_sha256": null
+    },
+    "msg/BppsmcDebug.msg": {
+      "sha256": "ed0d1ab95c37fa3df29b09bab37b05f6982329e321c01497ac6d6769172e6a00",
+      "baseline_sha256": null
+    },
+    "msg/Figure8Status.msg": {
+      "sha256": "66a16f4cccad0a10392752663dc451dc7a17be7a34f2de6ffad0d2e98275883d",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/CMakeLists.txt": {
+      "sha256": "be96335a8c474ba9cb144e35421f2628d2dfc47330f95d940f09244df2dc82e5",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Figure8Mission.hpp": {
+      "sha256": "dbf2324c10bac9679c2a1713f8ebd3dc44a2b9b30ec834188f1f9dfe250ffc10",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Figure8Trajectory.cpp": {
+      "sha256": "e24117829635885665b5a23132da56e2404b3e035d7654af558f997d0649a4e8",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Figure8Trajectory.hpp": {
+      "sha256": "6dfc55ea4cd551ac9ea68493b0a3c67fe4d36caafe1cb6eabbecafcedaa7379c",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Kconfig": {
+      "sha256": "4f66e37adfae8dda3ce098fd7bc7afbb982c7a642da3e26876de8c6d6723c624",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/trajectory_params.c": {
+      "sha256": "50b46b6d25fdf1a8892565123c852c018ef2a1c02f8f798c45af846a7a5a9a27",
+      "baseline_sha256": null
+    },
+    "src/modules/mc_pos_control/PositionControl/etimr_gains.h": {
+      "sha256": "2c407158618abeae8b5e70cbd3d56b591bf2c55d8c65514a593f7176d55e4a91",
+      "baseline_sha256": null
+    },
+    "src/modules/mc_pos_control/bppsmc_params.c": {
+      "sha256": "abb4ecd0c90663689b4419401fc0f3d74811a84e86cb43cc93aaee98d731a6b3",
+      "baseline_sha256": null
+    },
+    "ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500": {
+      "sha256": "325b23a4786d1a20971c30ea7ad0bb2c640652f8b7f73475969677d9e3f0099d",
+      "baseline_sha256": "4ffa85e8940ebb5dc0338f7043dd6172524c3e0716bf5adc5635f5a425532eaf"
+    },
+    "ROMFS/px4fmu_common/init.d/rc.mc_apps": {
+      "sha256": "955421c8e9657cfdd78313fc09e99012faae06e51f503ffa661e92ec5d6abee6",
+      "baseline_sha256": "abf6891c81b568f4e7358e7b5cfa1bdbd439d6b919adb6ff2cc95101792b12a4"
+    },
+    "boards/px4/sitl/default.px4board": {
+      "sha256": "9094a89f23a7e4407cfbfcf18598366e47f2c37ccb19065e6d16d6917cf32923",
+      "baseline_sha256": "5838a9261e42611d13921244247102970384365cc94eea54f0dc7a837bdc094c"
+    },
+    "msg/CMakeLists.txt": {
+      "sha256": "0ba018d353942e3dbf1c79958497f13ac6688479e1d066e2f31b99ba142fd23b",
+      "baseline_sha256": "dd51e4446794b5e281b45dea977d69a23fd08ad26cd774c687c9a6ab87153cde"
+    },
+    "src/modules/logger/logged_topics.cpp": {
+      "sha256": "b3bece680a49e3025241ffa74afeb3c25fde7c76ab16a936bb723283d56568d2",
+      "baseline_sha256": "77a7461346a769763536c27a6aa06b383563238d9a7cb3132e648eb9bb40f867"
+    },
+    "src/modules/mc_pos_control/MulticopterPositionControl.cpp": {
+      "sha256": "41250de8217fb8125525de10e2916d33a6234e39fc9023cda71709979bcda1c3",
+      "baseline_sha256": "b5d9698ef170f19015ca37c44f2011ac94a33a45cfab8134fe208980b5899768"
+    },
+    "src/modules/mc_pos_control/MulticopterPositionControl.hpp": {
+      "sha256": "c1608380dacb82e9a7a50f8efe41df68955269595f1df5b32558583273ff13d3",
+      "baseline_sha256": "97a3829efe0b168e70f1e358d24eba2628938d9e2f2a8fd51a089036b355158b"
+    },
+    "src/modules/mc_pos_control/PositionControl/CMakeLists.txt": {
+      "sha256": "9040f5047387ac533db644dfc040dd5c20075973e39e1742dced5ccaf62f7b7d",
+      "baseline_sha256": "1c7e5f8c4633274e53e4b5a3423d9950c71b2a03b8e65f8d0b7065d9d664d183"
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControl.cpp": {
+      "sha256": "c37e48b825f718d91ed5d60db1f56c4c3fdb9fe65cf0125ecae87cca294b2ab2",
+      "baseline_sha256": "8f9b42c61bfa2e0e3354d6eb50cfee6a88a070da05e4893379bc69c46b1a2434"
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControl.hpp": {
+      "sha256": "7bda5d275638888d053ebedba626e6febcefdb677fc690260a8589bf17218cb2",
+      "baseline_sha256": "44b69535bc87c4298a045ccd3af9b88c2fe9a2c85a31fbf3eba27939d5ff4c2e"
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControlTest.cpp": {
+      "sha256": "57bdfb8fb2957e529daaf7d20a27eedb09f4d2b54d7d245d10750760f87fc06a",
+      "baseline_sha256": "0882e63b08c1be86d51acc61dcd462cca37c3ae83b817c5687549c5269f488de"
+    },
+    "src/modules/simulation/gz_bridge/GZBridge.cpp": {
+      "sha256": "83a08702e64f490c584875e0c1b6b192acbc8070a6b8000866b6a651430dc4c9",
+      "baseline_sha256": "e49a2d443787b26d231d8991ffe1f56e3d02adbd01416a5e656c8e3059a869ea"
+    },
+    "src/modules/simulation/gz_bridge/GZBridge.hpp": {
+      "sha256": "e8d4ea0fb5eee72f69abd95ab487aa93f18ccfc91fbe8874908836ed1226c2c3",
+      "baseline_sha256": "a268a8fe039a0dac69890cbdbbe94723f43e54b1f98dd7f0b81aec59027b4b1d"
+    },
+    "src/modules/simulation/sensor_mag_sim/SensorMagSim.cpp": {
+      "sha256": "588881018c8fdc68b77fe6c3e56a073b6ec7242c9f06b6ea02e87c346310b18d",
+      "baseline_sha256": "4754bb27112201675c6fd64f2f3667b583a215d92c0bbf9aec86ab5464e6ba96"
+    },
+    "Tools/simulation/gz/worlds/default.sdf": {
+      "sha256": "530f7dfc44cdba8af0f3c71c1941ada14aa4bb36f5cafadf1a9bf377160a3d82",
+      "baseline_sha256": "e9bc6327660045f173bce21080e0a8c9d0d09341b5933f48f11e9b0b4e2d2079",
+      "repository": "Tools/simulation/gz"
+    }
+  },
+  "compiler": "arm-none-eabi-gcc (15:10.3-2021.07-4) 10.3.1 20210621 (release)",
+  "python": "3.10.12",
+  "artifacts": {
+    "px4_fmu-v6c_onboard.px4": "936e0aff42b07e1e9cd424094da7fdb344c9ccc3651fc7d2ee2dc809b1fc94bb",
+    "px4_fmu-v6c_onboard.elf": "052720c7d212af2c083de0df6fe459aec5ad779156190dbc26b94a41c2cb9c2f",
+    "parameters.xml": "4ec8d802ba906a301c62b54b7c5e89630fd2921b5f1aaae3d754bb2073c8eb34",
+    "airframes.xml": "632f54c5e977106da6a9c4d53a372aed26b122618b76fc0b3c7e8f337f1f83ca"
+  },
+  "exact_identity_with_sample_firmware_verified": false
+}

@@ -1,0 +1,4 @@
+/tmp/bppsmc-release-check-xbar6a0x/ET-BPPSMC-realflight-repro-1.0.0/reports/log_19/summary.json
+/tmp/bppsmc-release-check-xbar6a0x/ET-BPPSMC-realflight-repro-1.0.0/reports/log_19/sliding_terms.json
+PASS: 14 sample metrics reproduced within declared tolerances
+Report: /tmp/bppsmc-release-check-xbar6a0x/ET-BPPSMC-realflight-repro-1.0.0/reports/log_19

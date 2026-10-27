@@ -1,0 +1,33 @@
+等待 Gazebo 模型生成服务……
+Preflight Fail: vertical velocity unstable
+[logger] ./log/2026-10-26/14_06_34.ulg	
+Arm stick gesture disabled if arm switch in use	
+Figure8 ready: arm manually, then select OFFBOARD	
+Armed by RC (switch)	
+Figure8 started: BPPSMC	
+Takeoff detected	
+Figure8: hover	
+Figure8: figure8	
+Figure8: return_hold	
+Figure8: landing	
+Landing detected	
+Figure8: touchdown	
+Disarmed by internal command	
+Figure8 complete: landed and disarmed	
+Figure8 ready: arm manually, then select OFFBOARD	
+{
+  "hardware": false,
+  "setpoints_from_host": false,
+  "RC_input": "MAVLink RC_CHANNELS_OVERRIDE",
+  "trajectory": "Bernoulli lemniscate with quintic phase",
+  "simulator_only_hover_mapping": 0.73,
+  "flights": [
+    {
+      "method": 1,
+      "complete": true,
+      "max_relative_estimated_height": 0.8905538320541382
+    }
+  ],
+  "passed": true
+}
+验证目录： ET-BPPSMC-realflight-repro-1.0.0/workspace/results/calibrated_validation

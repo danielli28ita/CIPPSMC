@@ -1,0 +1,349 @@
+{
+  "package_version": "1.0.0",
+  "baseline_ref": "v1.15.4",
+  "baseline_commit": "99c40407ffd7ac184e2d7b4b293f36f10fe561ef",
+  "upstream_url": "https://github.com/PX4/PX4-Autopilot.git",
+  "submodules": [
+    {
+      "path": "Tools/simulation/flightgear/flightgear_bridge",
+      "commit": "f47ce7b5fbbb3aa43d33d2be1f6cd3746b13d5bf",
+      "parent": "",
+      "name": "Tools/flightgear_bridge",
+      "url": "https://github.com/PX4/PX4-FlightGear-Bridge.git"
+    },
+    {
+      "path": "Tools/simulation/gazebo-classic/sitl_gazebo-classic",
+      "commit": "da7206e057703cc645770f02437013358b71e1c0",
+      "parent": "",
+      "name": "Tools/simulation/gazebo-classic/sitl_gazebo-classic",
+      "url": "https://github.com/PX4/PX4-SITL_gazebo-classic.git"
+    },
+    {
+      "path": "Tools/simulation/gazebo-classic/sitl_gazebo-classic/external/OpticalFlow",
+      "commit": "28ef45c1fcb532b2bfd54c16b059c6a545143b2f",
+      "parent": "Tools/simulation/gazebo-classic/sitl_gazebo-classic",
+      "name": "external/OpticalFlow",
+      "url": "https://github.com/PX4/OpticalFlow.git"
+    },
+    {
+      "path": "Tools/simulation/gazebo-classic/sitl_gazebo-classic/external/OpticalFlow/external/klt_feature_tracker",
+      "commit": "9b5b567ae77f93d1ef4d36151529ba2506a46e7a",
+      "parent": "Tools/simulation/gazebo-classic/sitl_gazebo-classic/external/OpticalFlow",
+      "name": "external/klt_feature_tracker",
+      "url": "https://github.com/ethz-ait/klt_feature_tracker.git"
+    },
+    {
+      "path": "Tools/simulation/gz",
+      "commit": "d754381a1cecdd7f17050acd72bf5bf1327bced6",
+      "parent": "",
+      "name": "Tools/simulation/gz",
+      "url": "https://github.com/PX4/PX4-gazebo-models.git"
+    },
+    {
+      "path": "Tools/simulation/jmavsim/jMAVSim",
+      "commit": "66b764ada522893c05224950aa6268c809f8e48a",
+      "parent": "",
+      "name": "Tools/simulation/jmavsim/jMAVSim",
+      "url": "https://github.com/PX4/jMAVSim.git"
+    },
+    {
+      "path": "Tools/simulation/jmavsim/jMAVSim/jMAVlib",
+      "commit": "c08380767b21938391bec676a43b36b837af9ba4",
+      "parent": "Tools/simulation/jmavsim/jMAVSim",
+      "name": "jMAVlib",
+      "url": "https://github.com/PX4/jMAVlib.git"
+    },
+    {
+      "path": "Tools/simulation/jsbsim/jsbsim_bridge",
+      "commit": "68de2cc63ded9a0d6641d45e9eb3ed2b43454cba",
+      "parent": "",
+      "name": "Tools/simulation/jsbsim/jsbsim_bridge",
+      "url": "https://github.com/PX4/px4-jsbsim-bridge.git"
+    },
+    {
+      "path": "Tools/simulation/jsbsim/jsbsim_bridge/models/ATI-Resolution",
+      "commit": "40571cd808a204f4062128daeb6bb6db8c134c48",
+      "parent": "Tools/simulation/jsbsim/jsbsim_bridge",
+      "name": "models/ATI-Resolution",
+      "url": "https://github.com/FGMEMBERS/ATI-Resolution.git"
+    },
+    {
+      "path": "Tools/simulation/jsbsim/jsbsim_bridge/models/Rascal",
+      "commit": "d0d1db1961549e557885002cf9c3cff40cc27be2",
+      "parent": "Tools/simulation/jsbsim/jsbsim_bridge",
+      "name": "models/Rascal",
+      "url": "https://github.com/Auterion/FlightGear-Rascal.git"
+    },
+    {
+      "path": "boards/modalai/voxl2/libfc-sensor-api",
+      "commit": "ca16e99074641a10d153961291243ede7720c2e2",
+      "parent": "",
+      "name": "boards/modalai/voxl2/libfc-sensor-api",
+      "url": "https://gitlab.com/voxl-public/voxl-sdk/core-libs/libfc-sensor-api.git"
+    },
+    {
+      "path": "platforms/nuttx/NuttX/apps",
+      "commit": "e37940d8535f603a16b8f6f21c21edaf584218aa",
+      "parent": "",
+      "name": "platforms/nuttx/NuttX/apps",
+      "url": "https://github.com/PX4/NuttX-apps.git"
+    },
+    {
+      "path": "platforms/nuttx/NuttX/nuttx",
+      "commit": "5d74bc138955e6f010a38e0f87f34e9a9019aecc",
+      "parent": "",
+      "name": "platforms/nuttx/NuttX/nuttx",
+      "url": "https://github.com/PX4/NuttX.git"
+    },
+    {
+      "path": "src/drivers/cyphal/legacy_data_types",
+      "commit": "36a01e428b110ff84c8babe5b65667b5e3037d5e",
+      "parent": "",
+      "name": "src/drivers/cyphal/legacy_data_types",
+      "url": "https://github.com/PX4/public_regulated_data_types.git"
+    },
+    {
+      "path": "src/drivers/cyphal/libcanard",
+      "commit": "5c69d451ab0787a81dcb615692d707f2a286f5e5",
+      "parent": "",
+      "name": "src/drivers/cyphal/libcanard",
+      "url": "https://github.com/opencyphal/libcanard.git"
+    },
+    {
+      "path": "src/drivers/cyphal/public_regulated_data_types",
+      "commit": "d0bd6516dac8ff61287fe49a9f2c75e7d4dc1b8e",
+      "parent": "",
+      "name": "src/drivers/cyphal/public_regulated_data_types",
+      "url": "https://github.com/opencyphal/public_regulated_data_types.git"
+    },
+    {
+      "path": "src/drivers/gps/devices",
+      "commit": "ad769ff53d683d06937c92bae58377d65893967b",
+      "parent": "",
+      "name": "src/drivers/gps/devices",
+      "url": "https://github.com/PX4/PX4-GPSDrivers.git"
+    },
+    {
+      "path": "src/drivers/uavcan/libuavcan",
+      "commit": "9a0fd624c448cad5633720676233f74846387a9f",
+      "parent": "",
+      "name": "src/drivers/uavcan/libuavcan",
+      "url": "https://github.com/dronecan/libuavcan.git"
+    },
+    {
+      "path": "src/drivers/uavcan/libuavcan/dsdl",
+      "commit": "5d303e1a9eb9bce17bb58a2378c1666d1cef3665",
+      "parent": "src/drivers/uavcan/libuavcan",
+      "name": "dsdl",
+      "url": "https://github.com/dronecan/DSDL"
+    },
+    {
+      "path": "src/drivers/uavcan/libuavcan/libuavcan/dsdl_compiler/pyuavcan",
+      "commit": "7aed0a9705c7b931eda1cd4491729cdc88cc82bf",
+      "parent": "src/drivers/uavcan/libuavcan",
+      "name": "libuavcan/dsdl_compiler/pyuavcan",
+      "url": "https://github.com/dronecan/pydronecan"
+    },
+    {
+      "path": "src/lib/cdrstream/cyclonedds",
+      "commit": "314887ca403c2fb0a0316add22672102936ed36c",
+      "parent": "",
+      "name": "src/lib/cdrstream/cyclonedds",
+      "url": "https://github.com/px4/cyclonedds"
+    },
+    {
+      "path": "src/lib/cdrstream/rosidl",
+      "commit": "7790c70717e09c003711f6f65015666c223fc283",
+      "parent": "",
+      "name": "src/lib/cdrstream/rosidl",
+      "url": "https://github.com/px4/rosidl"
+    },
+    {
+      "path": "src/lib/crypto/libtomcrypt",
+      "commit": "673f5ce29015a9bba3c96792920a10601b5b0718",
+      "parent": "",
+      "name": "src/lib/crypto/libtomcrypt",
+      "url": "https://github.com/PX4/libtomcrypt.git"
+    },
+    {
+      "path": "src/lib/crypto/libtommath",
+      "commit": "fd73d7630b9d3ed5a79d613ff680a549e9780de7",
+      "parent": "",
+      "name": "src/lib/crypto/libtommath",
+      "url": "https://github.com/PX4/libtommath.git"
+    },
+    {
+      "path": "src/lib/crypto/monocypher",
+      "commit": "baca5d31259c598540e4d1284bc8d8f793abf83a",
+      "parent": "",
+      "name": "src/lib/crypto/monocypher",
+      "url": "https://github.com/PX4/Monocypher.git"
+    },
+    {
+      "path": "src/lib/events/libevents",
+      "commit": "59f7f5c0ec2e76fadbc1dc40cc0705d614472edc",
+      "parent": "",
+      "name": "src/lib/events/libevents",
+      "url": "https://github.com/mavlink/libevents.git"
+    },
+    {
+      "path": "src/lib/events/libevents/libs/cpp/parse/nlohmann_json",
+      "commit": "bc889afb4c5bf1c0d8ee29ef35eaaf4c8bef8a5d",
+      "parent": "src/lib/events/libevents",
+      "name": "libs/cpp/parse/nlohmann_json",
+      "url": "https://github.com/nlohmann/json.git"
+    },
+    {
+      "path": "src/lib/heatshrink/heatshrink",
+      "commit": "052e6de72f67f1777198bce98f3de62f7f3c16a0",
+      "parent": "",
+      "name": "src/lib/heatshrink/heatshrink",
+      "url": "https://github.com/PX4/heatshrink.git"
+    },
+    {
+      "path": "src/modules/mavlink/mavlink",
+      "commit": "a3558d6b335d930fc01816fd168d16b3f38ed434",
+      "parent": "",
+      "name": "src/modules/mavlink/mavlink",
+      "url": "https://github.com/mavlink/mavlink.git"
+    },
+    {
+      "path": "src/modules/mavlink/mavlink/pymavlink",
+      "commit": "f4e45e4ce2ecb84a9d6aaf1cbed84e2fe1535312",
+      "parent": "src/modules/mavlink/mavlink",
+      "name": "pymavlink",
+      "url": "https://github.com/ardupilot/pymavlink.git"
+    },
+    {
+      "path": "src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client",
+      "commit": "711aef423edd1820347b866d1e4164832df35d04",
+      "parent": "",
+      "name": "src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client",
+      "url": "https://github.com/PX4/Micro-XRCE-DDS-Client.git"
+    },
+    {
+      "path": "src/modules/zenoh/zenoh-pico",
+      "commit": "22bbfc215092a051341c234fdcf68f5baa267dec",
+      "parent": "",
+      "name": "src/modules/zenoh/zenoh-pico",
+      "url": "https://github.com/px4/zenoh-pico"
+    }
+  ],
+  "files": {
+    "boards/px4/fmu-v6c/f8hitl.px4board": {
+      "sha256": "3a241d2a17b963523ed03e71e89ab03f54a77648ce6d32acb7e61be01632c16e",
+      "baseline_sha256": null
+    },
+    "boards/px4/fmu-v6c/hitl.px4board": {
+      "sha256": "0ae3527f8c1f2d120c02384730cfae6586f8f5b62f06e1f2e143e94b90dc930b",
+      "baseline_sha256": null
+    },
+    "boards/px4/fmu-v6c/onboard.px4board": {
+      "sha256": "dc7388d4193153a103381433cfe84e5a7818ba1b3467901597a1efbbe3b5a1f0",
+      "baseline_sha256": null
+    },
+    "msg/BppsmcDebug.msg": {
+      "sha256": "ed0d1ab95c37fa3df29b09bab37b05f6982329e321c01497ac6d6769172e6a00",
+      "baseline_sha256": null
+    },
+    "msg/Figure8Status.msg": {
+      "sha256": "66a16f4cccad0a10392752663dc451dc7a17be7a34f2de6ffad0d2e98275883d",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/CMakeLists.txt": {
+      "sha256": "be96335a8c474ba9cb144e35421f2628d2dfc47330f95d940f09244df2dc82e5",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Figure8Mission.hpp": {
+      "sha256": "dbf2324c10bac9679c2a1713f8ebd3dc44a2b9b30ec834188f1f9dfe250ffc10",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Figure8Trajectory.cpp": {
+      "sha256": "e24117829635885665b5a23132da56e2404b3e035d7654af558f997d0649a4e8",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Figure8Trajectory.hpp": {
+      "sha256": "6dfc55ea4cd551ac9ea68493b0a3c67fe4d36caafe1cb6eabbecafcedaa7379c",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/Kconfig": {
+      "sha256": "4f66e37adfae8dda3ce098fd7bc7afbb982c7a642da3e26876de8c6d6723c624",
+      "baseline_sha256": null
+    },
+    "src/modules/figure8_trajectory/trajectory_params.c": {
+      "sha256": "50b46b6d25fdf1a8892565123c852c018ef2a1c02f8f798c45af846a7a5a9a27",
+      "baseline_sha256": null
+    },
+    "src/modules/mc_pos_control/PositionControl/etimr_gains.h": {
+      "sha256": "2c407158618abeae8b5e70cbd3d56b591bf2c55d8c65514a593f7176d55e4a91",
+      "baseline_sha256": null
+    },
+    "src/modules/mc_pos_control/bppsmc_params.c": {
+      "sha256": "abb4ecd0c90663689b4419401fc0f3d74811a84e86cb43cc93aaee98d731a6b3",
+      "baseline_sha256": null
+    },
+    "ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500": {
+      "sha256": "325b23a4786d1a20971c30ea7ad0bb2c640652f8b7f73475969677d9e3f0099d",
+      "baseline_sha256": "4ffa85e8940ebb5dc0338f7043dd6172524c3e0716bf5adc5635f5a425532eaf"
+    },
+    "ROMFS/px4fmu_common/init.d/rc.mc_apps": {
+      "sha256": "955421c8e9657cfdd78313fc09e99012faae06e51f503ffa661e92ec5d6abee6",
+      "baseline_sha256": "abf6891c81b568f4e7358e7b5cfa1bdbd439d6b919adb6ff2cc95101792b12a4"
+    },
+    "boards/px4/sitl/default.px4board": {
+      "sha256": "9094a89f23a7e4407cfbfcf18598366e47f2c37ccb19065e6d16d6917cf32923",
+      "baseline_sha256": "5838a9261e42611d13921244247102970384365cc94eea54f0dc7a837bdc094c"
+    },
+    "msg/CMakeLists.txt": {
+      "sha256": "0ba018d353942e3dbf1c79958497f13ac6688479e1d066e2f31b99ba142fd23b",
+      "baseline_sha256": "dd51e4446794b5e281b45dea977d69a23fd08ad26cd774c687c9a6ab87153cde"
+    },
+    "src/modules/logger/logged_topics.cpp": {
+      "sha256": "b3bece680a49e3025241ffa74afeb3c25fde7c76ab16a936bb723283d56568d2",
+      "baseline_sha256": "77a7461346a769763536c27a6aa06b383563238d9a7cb3132e648eb9bb40f867"
+    },
+    "src/modules/mc_pos_control/MulticopterPositionControl.cpp": {
+      "sha256": "41250de8217fb8125525de10e2916d33a6234e39fc9023cda71709979bcda1c3",
+      "baseline_sha256": "b5d9698ef170f19015ca37c44f2011ac94a33a45cfab8134fe208980b5899768"
+    },
+    "src/modules/mc_pos_control/MulticopterPositionControl.hpp": {
+      "sha256": "c1608380dacb82e9a7a50f8efe41df68955269595f1df5b32558583273ff13d3",
+      "baseline_sha256": "97a3829efe0b168e70f1e358d24eba2628938d9e2f2a8fd51a089036b355158b"
+    },
+    "src/modules/mc_pos_control/PositionControl/CMakeLists.txt": {
+      "sha256": "9040f5047387ac533db644dfc040dd5c20075973e39e1742dced5ccaf62f7b7d",
+      "baseline_sha256": "1c7e5f8c4633274e53e4b5a3423d9950c71b2a03b8e65f8d0b7065d9d664d183"
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControl.cpp": {
+      "sha256": "c37e48b825f718d91ed5d60db1f56c4c3fdb9fe65cf0125ecae87cca294b2ab2",
+      "baseline_sha256": "8f9b42c61bfa2e0e3354d6eb50cfee6a88a070da05e4893379bc69c46b1a2434"
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControl.hpp": {
+      "sha256": "7bda5d275638888d053ebedba626e6febcefdb677fc690260a8589bf17218cb2",
+      "baseline_sha256": "44b69535bc87c4298a045ccd3af9b88c2fe9a2c85a31fbf3eba27939d5ff4c2e"
+    },
+    "src/modules/mc_pos_control/PositionControl/PositionControlTest.cpp": {
+      "sha256": "57bdfb8fb2957e529daaf7d20a27eedb09f4d2b54d7d245d10750760f87fc06a",
+      "baseline_sha256": "0882e63b08c1be86d51acc61dcd462cca37c3ae83b817c5687549c5269f488de"
+    },
+    "src/modules/simulation/gz_bridge/GZBridge.cpp": {
+      "sha256": "83a08702e64f490c584875e0c1b6b192acbc8070a6b8000866b6a651430dc4c9",
+      "baseline_sha256": "e49a2d443787b26d231d8991ffe1f56e3d02adbd01416a5e656c8e3059a869ea"
+    },
+    "src/modules/simulation/gz_bridge/GZBridge.hpp": {
+      "sha256": "e8d4ea0fb5eee72f69abd95ab487aa93f18ccfc91fbe8874908836ed1226c2c3",
+      "baseline_sha256": "a268a8fe039a0dac69890cbdbbe94723f43e54b1f98dd7f0b81aec59027b4b1d"
+    },
+    "src/modules/simulation/sensor_mag_sim/SensorMagSim.cpp": {
+      "sha256": "588881018c8fdc68b77fe6c3e56a073b6ec7242c9f06b6ea02e87c346310b18d",
+      "baseline_sha256": "4754bb27112201675c6fd64f2f3667b583a215d92c0bbf9aec86ab5464e6ba96"
+    },
+    "Tools/simulation/gz/worlds/default.sdf": {
+      "sha256": "530f7dfc44cdba8af0f3c71c1941ada14aa4bb36f5cafadf1a9bf377160a3d82",
+      "baseline_sha256": "e9bc6327660045f173bce21080e0a8c9d0d09341b5933f48f11e9b0b4e2d2079",
+      "repository": "Tools/simulation/gz"
+    }
+  },
+  "dependency_policy": "Clean pinned upstream submodules; only intentional Gazebo default-world adaptation is overlaid. Existing local deleted dependency worktrees are not copied.",
+  "controller_source_unchanged_from_working_tree": true
+}

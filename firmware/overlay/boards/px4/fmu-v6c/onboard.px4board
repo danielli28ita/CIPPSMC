@@ -1,0 +1,4 @@
+# Inherits default. The onboard task uses uORB, so omit the unused DDS client
+# to recover FLASH space without removing sensors, RC or flight controllers.
+CONFIG_MODULES_FIGURE8_TRAJECTORY=y
+CONFIG_MODULES_UXRCE_DDS_CLIENT=n

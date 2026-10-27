@@ -1,0 +1,25 @@
+{
+  "built_from": "frozen firmware/overlay on firmware/BASELINE.json baseline",
+  "target": "px4_fmu-v6c_onboard",
+  "board_id": 56,
+  "image_size": 1900252,
+  "flash_used_bytes": 1900252,
+  "flash_total_bytes": 1966080,
+  "compiled_bp_control_call_verified": true,
+  "default_parameters": {
+    "MPC_CTRL_METHOD": "0",
+    "F8_ENABLE": "0",
+    "BPP_KS_Z": "1.75",
+    "BPP_KS_XY": "1.40",
+    "MPC_THR_HOVER": "0.5"
+  },
+  "sample_profile_is_runtime_configuration": true,
+  "exact_binary_identity_with_sample_firmware_verified": false,
+  "hardware_flight_test_of_rebuilt_binary_performed": false,
+  "artifacts_sha256": {
+    "parameters.xml": "4ec8d802ba906a301c62b54b7c5e89630fd2921b5f1aaae3d754bb2073c8eb34",
+    "px4_fmu-v6c_onboard.px4": "936e0aff42b07e1e9cd424094da7fdb344c9ccc3651fc7d2ee2dc809b1fc94bb",
+    "airframes.xml": "632f54c5e977106da6a9c4d53a372aed26b122618b76fc0b3c7e8f337f1f83ca",
+    "px4_fmu-v6c_onboard.elf": "052720c7d212af2c083de0df6fe459aec5ad779156190dbc26b94a41c2cb9c2f"
+  }
+}

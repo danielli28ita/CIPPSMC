@@ -1,0 +1,26 @@
+{
+  "sample": "log_19_2026-10-19-10-01-54.ulg",
+  "sha256": "34d4087e9f9f53c8364c87fd2501edbf2f88131b98b14af4910c027afb3eea7e",
+  "parameter_count": 1153,
+  "profile_parameter_count": 36,
+  "changed_parameters": [],
+  "provenance": "Decoded ULog initial parameter values; float32 values retained exactly in JSON/17-digit text.",
+  "firmware_metadata": {
+    "ver_sw": "99c40407ffd7ac184e2d7b4b293f36f10fe561ef",
+    "ver_sw_release": 17761280,
+    "ver_hw": "PX4_FMU_V6C",
+    "ver_hw_subtype": "V6C000002",
+    "sys_name": "PX4",
+    "sys_os_name": "NuttX",
+    "sys_os_ver": "5d74bc138955e6f010a38e0f87f34e9a9019aecc",
+    "sys_os_ver_release": 202113279,
+    "sys_toolchain": "GNU GCC",
+    "sys_toolchain_ver": "10.3.1 20210621 (release)",
+    "sys_mcu": "STM32H7[4|5]xxx, rev. V",
+    "ver_data_format": 2,
+    "sys_uuid": "000600000000383236313533511200350027",
+    "time_ref_utc": 0,
+    "metadata_events_sha256": "8c803988dcc343db2d8dc88fef7025270e83c307acb83ddb4666a5ecddf36117"
+  },
+  "exact_rebuilt_binary_identity_with_sample": false
+}

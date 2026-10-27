@@ -1,0 +1,16 @@
+{
+  "release_date": "2026-10-26",
+  "offline_tests_passed": true,
+  "offline_parameter_and_provenance_tests": 5,
+  "sample_metric_checks": 14,
+  "real_build_passed": true,
+  "sitl_build_passed": true,
+  "compiled_bppsmc_call_verified_both_targets": true,
+  "sitl_lifecycle_and_profile_passed": true,
+  "sitl_tracking_criteria_passed": true,
+  "new_hardware_flash_or_flight_performed": false,
+  "fresh_os_install_tested": false,
+  "exact_sample_firmware_binary_identity_verified": false,
+  "only_bundled_ulog": "log_19_2026-10-19-10-01-54.ulg",
+  "notes": "Final independent extraction results are recorded separately."
+}

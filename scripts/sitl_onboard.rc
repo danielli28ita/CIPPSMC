@@ -1,0 +1,26 @@
+#!/bin/sh
+# SITL only: simulated RC channels, never load these mappings onto real hardware.
+. px4-alias.sh
+. "${R}etc/init.d-posix/rcS"
+param set COM_RC_IN_MODE 0
+param set RC_CHAN_CNT 8
+param set RC_MAP_ROLL 1
+param set RC_MAP_PITCH 2
+param set RC_MAP_THROTTLE 3
+param set RC_MAP_YAW 4
+param set RC_MAP_FLTMODE 5
+param set RC_MAP_ARM_SW 6
+param set RC_MAP_KILL_SW 7
+param set COM_FLTMODE1 2
+param set COM_FLTMODE2 2
+param set COM_FLTMODE3 8
+param set COM_FLTMODE4 8
+param set COM_FLTMODE5 7
+param set COM_FLTMODE6 7
+param set COM_RC_OVERRIDE 3
+param set F8_ENABLE 1
+param set MPC_CTRL_METHOD 0
+. "$BPP_REPRO_PROFILE"
+# Model calibration only. Never load this startup script on an aircraft.
+param set MPC_THR_HOVER "$BPP_SIM_HOVER"
+figure8_trajectory start

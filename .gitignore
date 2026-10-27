@@ -1,0 +1,4 @@
+workspace/
+reports/
+__pycache__/
+*.pyc

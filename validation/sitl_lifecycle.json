@@ -1,0 +1,15 @@
+{
+  "hardware": false,
+  "setpoints_from_host": false,
+  "RC_input": "MAVLink RC_CHANNELS_OVERRIDE",
+  "trajectory": "Bernoulli lemniscate with quintic phase",
+  "simulator_only_hover_mapping": 0.73,
+  "flights": [
+    {
+      "method": 1,
+      "complete": true,
+      "max_relative_estimated_height": 0.8905538320541382
+    }
+  ],
+  "passed": true
+}
