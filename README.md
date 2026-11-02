@@ -8,6 +8,10 @@ Short name: **CIPPSMC**.
 
 This repository holds the PX4 v1.15.4 position-controller sources, two real-flight logs, and the figures drawn from those logs. The curves use the same panel layout as the paper: per-axis position error, commanded acceleration, and the horizontal path. Simulator runs are a separate code check and are not drawn on these figures.
 
+## Demo video
+
+[video.mp4](https://github.com/danielli28ita/CIPPSMC/raw/main/video.mp4) — 2:45.94, 1920x1080, 30 fps, English narration. The file is too large for the GitHub file viewer; the link downloads it directly.
+
 ## Flights
 
 | Flight | Log | SHA256 |
