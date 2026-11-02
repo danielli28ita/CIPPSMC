@@ -15,16 +15,16 @@
       "bytes": 1527
     },
     "README.md": {
-      "sha256": "909dcc00249c542d41fa1619da88307a639a87fff2f399628e7056048f75bf90",
-      "bytes": 10080
+      "sha256": "9a60270903bf249f72a7c9086339a9863b55f997a1826d9be76d7548a958b3c7",
+      "bytes": 10049
     },
     "THIRD_PARTY_NOTICES.md": {
       "sha256": "f7c4455d92f457d8af2c6040689ac81c123833d30e9541a8403332abb858103d",
       "bytes": 1315
     },
     "VALIDATION.md": {
-      "sha256": "952a892676431bb88d8c79aab0bcd714cd91ca8d56b9ff0db7b37036675b25a2",
-      "bytes": 4987
+      "sha256": "6cdf1327c0ada22fc564f1c4d3f99cbd57b332f13274f20c95c26858e62297d7",
+      "bytes": 5039
     },
     "analysis/analyze_sliding_terms.py": {
       "sha256": "961282db3e4abdbf676c72a833564ffcbf5f204f27cd63060c865d9e213fc273",
@@ -79,8 +79,8 @@
       "bytes": 48457
     },
     "data/analysis/tracking.csv": {
-      "sha256": "b0cd77f47878075b0a00fd32aa9268242f4606d0a6b78344c31477b901f33d7f",
-      "bytes": 143108
+      "sha256": "fdd1b1ca3941f1059a72854e1660c10d731cbaf8b6be25fc357467cefcce4da6",
+      "bytes": 142271
     },
     "data/analysis/tracking.pdf": {
       "sha256": "b3ec289db0ac4b9684933379a084a1673294a51ffbad940d4d461335f98c2d8d",
@@ -115,8 +115,8 @@
       "bytes": 5624
     },
     "docs/REAL_FLIGHT.md": {
-      "sha256": "9baf1a19382f9ea95f9f34bb4fdfeb76aa7c0346dce931dd94bc03ad1dd08b48",
-      "bytes": 8275
+      "sha256": "b05cd2f83ae8a5e55c0793cdfe86fa7230bc296157a2af5ad42028fcabebfc65",
+      "bytes": 8384
     },
     "environments/requirements.lock.txt": {
       "sha256": "560e2121395530269d8b050cbd40db2bc51303bc57b3a128b1aa2fd5e181e894",
@@ -127,8 +127,8 @@
       "bytes": 1372
     },
     "firmware/BASELINE.json": {
-      "sha256": "3b402f4eae5c4490364df93ca85af525ba80ea3a23240b126235800d223c2777",
-      "bytes": 15104
+      "sha256": "477bc5895760cbd30d1a69cb3aeb9edad16570bfb60c9e1c88279770919086bf",
+      "bytes": 14755
     },
     "firmware/against-v1.15.4.patch": {
       "sha256": "06e0e560c5d0fee2a771c879e9fb91f90e5aecb121ab019fdf1e836441258c94",
