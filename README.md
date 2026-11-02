@@ -151,7 +151,6 @@ The files in `artifacts/` were rebuilt from this frozen tree. They are not prove
 - [docs/REAL_FLIGHT.md](docs/REAL_FLIGHT.md)
 - [data/REPORT.md](data/REPORT.md)
 - [VALIDATION.md](VALIDATION.md)
-- [CHANGELOG.md](CHANGELOG.md)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
 The onboard task does not need ROS or DDS. An external pose source may still need its own bridge. Motor, propeller, ESC, battery, payload, and pose-sensor models are not in the logs and are listed as unknown in the aircraft note.
